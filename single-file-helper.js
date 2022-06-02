@@ -46,6 +46,7 @@ const LAZY_SRC_ATTRIBUTE_NAME = "data-single-filez-lazy-loaded-src";
 const STYLESHEET_ATTRIBUTE_NAME = "data-single-filez-stylesheet";
 const DISABLED_NOSCRIPT_ATTRIBUTE_NAME = "data-single-filez-disabled-noscript";
 const SELECTED_CONTENT_ATTRIBUTE_NAME = "data-single-filez-selected-content";
+const INVALID_ELEMENT_ATTRIBUTE_NAME = "data-single-filez-invalid-element";
 const ASYNC_SCRIPT_ATTRIBUTE_NAME = "data-single-filez-async-script";
 const FLOW_ELEMENTS_SELECTOR = "*:not(base):not(link):not(meta):not(noscript):not(script):not(style):not(template):not(title)";
 const KEPT_TAG_NAMES = ["NOSCRIPT", "DISABLED-NOSCRIPT", "META", "LINK", "STYLE", "TITLE", "TEMPLATE", "SOURCE", "OBJECT", "SCRIPT", "HEAD"];
@@ -93,6 +94,7 @@ export {
 	LAZY_SRC_ATTRIBUTE_NAME,
 	STYLESHEET_ATTRIBUTE_NAME,
 	SELECTED_CONTENT_ATTRIBUTE_NAME,
+	INVALID_ELEMENT_ATTRIBUTE_NAME,
 	ASYNC_SCRIPT_ATTRIBUTE_NAME,
 	COMMENT_HEADER,
 	SINGLE_FILE_UI_ELEMENT_CLASS,
@@ -136,8 +138,10 @@ function preProcessDoc(doc, win, options) {
 	const invalidElements = new Map();
 	let elementsInfo;
 	if (win && doc.documentElement) {
-		doc.querySelectorAll("button button").forEach(element => {
-			const placeHolderElement = doc.createComment("");
+		doc.querySelectorAll("button button, a a, p div").forEach(element => {
+			const placeHolderElement = doc.createElement("template");
+			placeHolderElement.setAttribute(INVALID_ELEMENT_ATTRIBUTE_NAME, "");
+			placeHolderElement.content.appendChild(element.cloneNode(true));
 			invalidElements.set(element, placeHolderElement);
 			element.replaceWith(placeHolderElement);
 		});
