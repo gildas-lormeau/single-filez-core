@@ -205,7 +205,7 @@ async function processFontFaceRule(ruleData, fontInfo, fontResources, fontTests,
 		if (fontTests.has(source.src)) {
 			source.valid = fontTests.get(source.src);
 		} else {
-			if (FontFace) {
+			if (FontFace && source.fontUrl) {
 				const resourceEntry = [...fontResources].find(([, resource]) => source.fontUrl && resource.name == source.fontUrl);
 				if (resourceEntry) {
 					const resource = resourceEntry[1];
@@ -277,7 +277,7 @@ async function processFontFaceRule(ruleData, fontInfo, fontResources, fontTests,
 	if (srcDeclaration) {
 		fontInfo.reverse();
 		try {
-			srcDeclaration.data.value = cssTree.parse(fontInfo.map(fontSource => fontSource.src).join(","), { context: "value" });
+			srcDeclaration.data.value = cssTree.parse(fontInfo.map(fontSource => fontSource.src).join(","), { context: "value", parseCustomProperty: true });
 		}
 		catch (error) {
 			// ignored
@@ -331,6 +331,7 @@ function createFontsDetailsInfo() {
 }
 
 function getURL(urlFunction) {
+	urlFunction = urlFunction.replace(/url\(-sf-url-original\\\(\\"(.*?)\\"\\\)\\ /g, "");
 	const urlMatch = urlFunction.match(REGEXP_URL_SIMPLE_QUOTES_FN) ||
 		urlFunction.match(REGEXP_URL_DOUBLE_QUOTES_FN) ||
 		urlFunction.match(REGEXP_URL_NO_QUOTES_FN);

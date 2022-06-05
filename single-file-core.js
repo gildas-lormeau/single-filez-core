@@ -1022,12 +1022,9 @@ class Processor {
 
 	resolveStyleAttributeURLs() {
 		this.doc.querySelectorAll("[style]").forEach(element => {
-			let styleContent = element.getAttribute("style");
-			if (this.options.compressCSS) {
-				styleContent = util.compressCSS(styleContent);
-			}
-			styleContent = ProcessorHelper.resolveStylesheetURLs(styleContent, this.baseURI, this.workStyleElement, this.options.saveOriginalURLs);
-			const declarationList = cssTree.parse(styleContent, { context: "declarationList" });
+			const styleContent = element.getAttribute("style");
+			const declarationList = cssTree.parse(styleContent, { context: "declarationList", parseCustomProperty: true });
+			ProcessorHelper.resolveStylesheetURLs(declarationList, this.baseURI, this.workStyleElement);
 			this.styles.set(element, declarationList);
 		});
 	}
@@ -1068,16 +1065,7 @@ class Processor {
 			let stylesheet;
 			stylesheets.set(element, stylesheetInfo);
 			if (!options.blockStylesheets) {
-				let stylesheetContent = await getStylesheetContent(element, baseURI, options, workStyleElement);
-				if (!matchCharsetEquals(stylesheetContent, options.charset)) {
-					options = Object.assign({}, options, { charset: getCharset(stylesheetContent) });
-					stylesheetContent = await getStylesheetContent(element, baseURI, options, workStyleElement);
-				}
-				try {
-					stylesheet = cssTree.parse(removeCssComments(stylesheetContent));
-				} catch (error) {
-					// ignored
-				}
+				stylesheet = await getStylesheet(element, baseURI, options, workStyleElement);
 			}
 			if (stylesheet && stylesheet.children) {
 				if (options.compressCSS) {
@@ -1089,16 +1077,17 @@ class Processor {
 			}
 		}
 
-		async function getStylesheetContent(element, baseURI, options, workStyleElement) {
-			let content;
+		async function getStylesheet(element, baseURI, options, workStyleElement) {
+			let stylesheet;
 			if (!options.blockStylesheets) {
 				if (element.tagName == "LINK") {
-					content = await ProcessorHelper.resolveLinkStylesheetURLs(element.href, baseURI, options, workStyleElement);
+					stylesheet = await ProcessorHelper.resolveLinkStylesheetURLs(element.href, baseURI, options, workStyleElement);
 				} else {
-					content = await ProcessorHelper.resolveImportURLs(element.textContent, baseURI, options, workStyleElement);
+					stylesheet = cssTree.parse(element.textContent, { context: "stylesheet", parseCustomProperty: true });
+					await ProcessorHelper.resolveImportURLs(stylesheet, baseURI, options, workStyleElement);
 				}
 			}
-			return content || "";
+			return stylesheet;
 		}
 	}
 
@@ -1110,7 +1099,7 @@ class Processor {
 					frameElement.setAttribute("data", "data:text/html,");
 				} else {
 					const src = frameElement.getAttribute("src");
-					if (this.options.saveOriginalURLs && !isDataURL(src)) {
+					if (this.options.saveOriginalURLs && src && !isDataURL(src)) {
 						frameElement.setAttribute("data-sf-original-src", src);
 					}
 					frameElement.removeAttribute("src");
@@ -1277,8 +1266,8 @@ class Processor {
 	}
 
 	async processStyleAttributes() {
-		return Promise.all([...this.styles].map(([, declarationList]) =>
-			ProcessorHelper.processStyle(declarationList.children.toArray(), this.baseURI, this.options, this.resources, this.batchRequest)
+		return Promise.all([...this.styles].map(([, stylesheet]) =>
+			ProcessorHelper.processStyle(stylesheet, this.baseURI, this.options, this.resources, this.batchRequest)
 		));
 	}
 
@@ -1330,7 +1319,7 @@ class Processor {
 				if (testValidURL(resourceURL)) {
 					element.removeAttribute("src");
 					const content = await util.getContent(resourceURL, {
-						charset: this.charset,
+						charset: this.charset != UTF8_CHARSET && this.charset,
 						maxResourceSize: this.options.maxResourceSize,
 						maxResourceSizeEnabled: this.options.maxResourceSizeEnabled,
 						frameId: this.options.windowId,
@@ -1421,11 +1410,7 @@ class Processor {
 			const stylesheetInfo = this.stylesheets.get(styleElement);
 			if (stylesheetInfo) {
 				this.stylesheets.delete(styleElement);
-				let stylesheetContent = cssTree.generate(stylesheetInfo.stylesheet);
-				if (this.options.saveOriginalURLs) {
-					stylesheetContent = replaceOriginalURLs(stylesheetContent);
-				}
-				styleElement.textContent = stylesheetContent;
+				styleElement.textContent = generateStylesheetContent(stylesheetInfo.stylesheet, this.options);
 				if (stylesheetInfo.mediaText) {
 					styleElement.media = stylesheetInfo.mediaText;
 				}
@@ -1442,11 +1427,7 @@ class Processor {
 				if (stylesheetInfo.mediaText) {
 					linkElement.media = stylesheetInfo.mediaText;
 				}
-				let stylesheetContent = cssTree.generate(stylesheetInfo.stylesheet);
-				if (this.options.saveOriginalURLs) {
-					stylesheetContent = replaceOriginalURLs(stylesheetContent);
-				}
-				this.resources.stylesheets.set(this.resources.stylesheets.size, { name, content: stylesheetContent, url: stylesheetInfo.url });
+				this.resources.stylesheets.set(this.resources.stylesheets.size, { name, content: generateStylesheetContent(stylesheetInfo.stylesheet, this.options), url: stylesheetInfo.url });
 			} else {
 				linkElement.remove();
 			}
@@ -1455,14 +1436,10 @@ class Processor {
 
 	replaceStyleAttributes() {
 		this.doc.querySelectorAll("[style]").forEach(element => {
-			const declarations = this.styles.get(element);
-			if (declarations) {
+			const declarationList = this.styles.get(element);
+			if (declarationList) {
 				this.styles.delete(element);
-				let styleContent = cssTree.generate(declarations);
-				if (this.options.saveOriginalURLs) {
-					styleContent = replaceOriginalURLs(styleContent);
-				}
-				element.setAttribute("style", styleContent);
+				element.setAttribute("style", generateStylesheetContent(declarationList, this.options));
 			} else {
 				element.setAttribute("style", "");
 			}
@@ -1675,52 +1652,40 @@ class ProcessorHelper {
 		removedRules.forEach(cssRule => stylesheet.children.remove(cssRule));
 	}
 
-	static async resolveImportURLs(stylesheetContent, baseURI, options, workStylesheet, importedStyleSheets = new Set()) {
-		stylesheetContent = ProcessorHelper.resolveStylesheetURLs(stylesheetContent, baseURI, workStylesheet, options.saveOriginalURLs);
-		const imports = getImportFunctions(stylesheetContent);
-		await Promise.all(imports.map(async cssImport => {
-			const match = matchImport(cssImport);
-			if (match) {
-				const regExpCssImport = getRegExp(cssImport);
-				let resourceURL = normalizeURL(match.resourceURL);
-				if (!testIgnoredPath(resourceURL) && testValidPath(resourceURL)) {
-					try {
-						resourceURL = util.resolveURL(match.resourceURL, baseURI);
-					} catch (error) {
-						// ignored
+	static async resolveImportURLs(stylesheet, baseURI, options, workStylesheet, importedStyleSheets = new Set(),) {
+		ProcessorHelper.resolveStylesheetURLs(stylesheet, baseURI, workStylesheet);
+		const imports = getImportFunctions(stylesheet);
+		await Promise.all(imports.map(async node => {
+			const urlNode = cssTree.find(node, node => node.type == "Url") || cssTree.find(node, node => node.type == "String");
+			let resourceURL = normalizeURL(urlNode.value);
+			if (!testIgnoredPath(resourceURL) && testValidPath(resourceURL)) {
+				urlNode.value = util.EMPTY_RESOURCE;
+				try {
+					resourceURL = util.resolveURL(resourceURL, baseURI);
+				} catch (error) {
+					// ignored
+				}
+				if (testValidURL(resourceURL) && !importedStyleSheets.has(resourceURL)) {
+					const content = await getStylesheetContent(resourceURL);
+					resourceURL = content.resourceURL;
+					content.data = getUpdatedResourceContent(resourceURL, content, options);
+					if (content.data && content.data.match(/^<!doctype /i)) {
+						content.data = "";
 					}
-					if (testValidURL(resourceURL) && !importedStyleSheets.has(resourceURL)) {
-						const content = await getStylesheetContent(resourceURL);
-						resourceURL = content.resourceURL;
-						content.data = getUpdatedResourceContent(resourceURL, content, options);
-						if (content.data && content.data.match(/^<!doctype /i)) {
-							content.data = "";
-						}
-						let importedStylesheetContent = removeCssComments(content.data);
-						if (options.compressCSS) {
-							importedStylesheetContent = util.compressCSS(importedStylesheetContent);
-						}
-						importedStylesheetContent = wrapMediaQuery(importedStylesheetContent, match.media);
-						if (stylesheetContent.includes(cssImport)) {
-							const ancestorStyleSheets = new Set(importedStyleSheets);
-							ancestorStyleSheets.add(resourceURL);
-							importedStylesheetContent = await ProcessorHelper.resolveImportURLs(importedStylesheetContent, resourceURL, options, workStylesheet, ancestorStyleSheets);
-							workStylesheet.textContent = importedStylesheetContent;
-							if ((workStylesheet.sheet && workStylesheet.sheet.cssRules.length) || (!workStylesheet.sheet && importedStylesheetContent)) {
-								stylesheetContent = stylesheetContent.replace(regExpCssImport, importedStylesheetContent);
-							} else {
-								stylesheetContent = stylesheetContent.replace(regExpCssImport, "");
-							}
-						}
-					} else {
-						stylesheetContent = stylesheetContent.replace(regExpCssImport, "");
+					const mediaQueryListNode = cssTree.find(node, node => node.type == "MediaQueryList");
+					if (mediaQueryListNode) {
+						content.data = wrapMediaQuery(content.data, cssTree.generate(mediaQueryListNode));
 					}
-				} else {
-					stylesheetContent = stylesheetContent.replace(regExpCssImport, "");
+					const stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
+					const ancestorStyleSheets = new Set(importedStyleSheets);
+					ancestorStyleSheets.add(resourceURL);
+					await ProcessorHelper.resolveImportURLs(stylesheet, resourceURL, options, workStylesheet, ancestorStyleSheets);
+					for (let keyName of Object.keys(stylesheet.children.head.data)) {
+						node[keyName] = stylesheet.children.head.data[keyName];
+					}
 				}
 			}
 		}));
-		return stylesheetContent;
 
 		async function getStylesheetContent(resourceURL) {
 			const content = await util.getContent(resourceURL, {
@@ -1757,13 +1722,10 @@ class ProcessorHelper {
 		}
 	}
 
-	static resolveStylesheetURLs(stylesheetContent, baseURI, workStylesheet, saveOriginalURLs) {
-		const urlFunctions = getUrlFunctions(stylesheetContent);
-		if (saveOriginalURLs) {
-			stylesheetContent = addOriginalURLs(stylesheetContent);
-		}
-		urlFunctions.map(urlFunction => {
-			const originalResourceURL = matchURL(urlFunction);
+	static resolveStylesheetURLs(stylesheet, baseURI, workStylesheet) {
+		const urls = getUrlFunctions(stylesheet);
+		urls.map(urlNode => {
+			const originalResourceURL = urlNode.value;
 			let resourceURL = normalizeURL(originalResourceURL);
 			workStylesheet.textContent = "tmp { content:\"" + resourceURL + "\"}";
 			if (workStylesheet.sheet && workStylesheet.sheet.cssRules) {
@@ -1779,25 +1741,14 @@ class ProcessorHelper {
 							// ignored
 						}
 					}
-					if (testValidURL(resolvedURL) && originalResourceURL != resolvedURL && stylesheetContent.includes(urlFunction)) {
-						try {
-							stylesheetContent = stylesheetContent.replace(getRegExp(urlFunction), originalResourceURL ? urlFunction.replace(originalResourceURL, resolvedURL) : "url(" + resolvedURL + ")");
-						} catch (error) {
-							// ignored
-						}
+					if (testValidURL(resolvedURL)) {
+						urlNode.value = resolvedURL;
 					}
 				} else {
-					let newUrlFunction;
-					if (originalResourceURL) {
-						newUrlFunction = urlFunction.replace(originalResourceURL, util.EMPTY_RESOURCE);
-					} else {
-						newUrlFunction = "url(" + util.EMPTY_RESOURCE + ")";
-					}
-					stylesheetContent = stylesheetContent.replace(getRegExp(urlFunction), newUrlFunction);
+					urlNode.value = util.EMPTY_RESOURCE;
 				}
 			}
 		});
-		return stylesheetContent;
 	}
 
 	static async resolveLinkStylesheetURLs(resourceURL, baseURI, options, workStylesheet) {
@@ -1825,12 +1776,9 @@ class ProcessorHelper {
 			if (content.data && content.data.match(/^<!doctype /i)) {
 				content.data = "";
 			}
-			let stylesheetContent = removeCssComments(content.data);
-			if (options.compressCSS) {
-				stylesheetContent = util.compressCSS(stylesheetContent);
-			}
-			stylesheetContent = await ProcessorHelper.resolveImportURLs(stylesheetContent, resourceURL, options, workStylesheet);
-			return stylesheetContent;
+			const stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
+			await ProcessorHelper.resolveImportURLs(stylesheet, resourceURL, options, workStylesheet);
+			return stylesheet;
 		}
 	}
 
@@ -1843,7 +1791,7 @@ class ProcessorHelper {
 				removedRules.push(cssRule);
 			} else if (ruleData.block && ruleData.block.children) {
 				if (ruleData.type == "Rule") {
-					promises.push(this.processStyle(ruleData.block.children.toArray(), baseURI, options, resources, batchRequest));
+					promises.push(this.processStyle(ruleData, baseURI, options, resources, batchRequest));
 				} else if (ruleData.type == "Atrule" && (ruleData.name == "media" || ruleData.name == "supports")) {
 					promises.push(this.processStylesheet(ruleData.block.children, baseURI, options, resources, batchRequest));
 				} else if (ruleData.type == "Atrule" && ruleData.name == "font-face") {
@@ -1855,81 +1803,50 @@ class ProcessorHelper {
 		await Promise.all(promises);
 
 		async function processFontFaceRule(ruleData) {
-			await Promise.all(ruleData.block.children.toArray().map(async declaration => {
-				if (declaration.type == "Declaration" && declaration.value.children) {
-					const urlFunctions = getUrlFunctions(getCSSValue(declaration.value));
-					await Promise.all(urlFunctions.map(async urlFunction => {
-						const originalResourceURL = matchURL(urlFunction);
-						if (!options.blockFonts) {
-							const resourceURL = normalizeURL(originalResourceURL);
-							if (!testIgnoredPath(resourceURL) && testValidURL(resourceURL)) {
-								let { content, extension, indexResource, contentType } = await batchRequest.addURL(resourceURL,
-									{ asBinary: true, expectedType: "font", baseURI, blockMixedContent: options.blockMixedContent });
-								const name = "fonts/" + indexResource + extension;
-								replaceURLs(declaration, originalResourceURL, name);
-								resources.fonts.set(indexResource, { name, content, extension, contentType, url: resourceURL });
-							}
+			const urls = getUrlFunctions(ruleData);
+			await Promise.all(urls.map(async urlNode => {
+				const originalResourceURL = urlNode.value;
+				if (!options.blockFonts) {
+					const resourceURL = normalizeURL(originalResourceURL);
+					if (!testIgnoredPath(resourceURL) && testValidURL(resourceURL)) {
+						let { content, extension, indexResource, contentType } = await batchRequest.addURL(resourceURL,
+							{ asBinary: true, expectedType: "font", baseURI, blockMixedContent: options.blockMixedContent });
+						const name = "fonts/" + indexResource + extension;
+						if (!isDataURL(resourceURL) && options.saveOriginalURLs) {
+							urlNode.value = "-sf-url-original(" + JSON.stringify(originalResourceURL) + ") " + name;
 						} else {
-							replaceURLs(declaration, originalResourceURL, util.EMPTY_RESOURCE);
+							urlNode.value = name;
 						}
-					}));
+						resources.fonts.set(indexResource, { name, content, extension, contentType, url: resourceURL });
+					}
+				} else {
+					urlNode.value = util.EMPTY_RESOURCE;
 				}
 			}));
-
-			function replaceURLs(declaration, oldURL, newURL) {
-				declaration.value.children.forEach(token => {
-					if (token.type == "Url" && util.removeQuotes(getCSSValue(token.value)) == oldURL) {
-						token.value = newURL;
-					}
-				});
-			}
 		}
 	}
 
-	static async processStyle(declarations, baseURI, options, resources, batchRequest) {
-		await Promise.all(declarations.map(async declaration => {
-			if (declaration.value && !declaration.value.children && declaration.value.type == "Raw") {
-				try {
-					declaration.value = cssTree.parse(declaration.value.value, { context: "value" });
-				} catch (error) {
-					// ignored
-				}
-			}
-			if (declaration.type == "Declaration" && declaration.value.children) {
-				const urlFunctions = getUrlFunctions(getCSSValue(declaration.value));
-				await Promise.all(urlFunctions.map(async urlFunction => {
-					const originalResourceURL = matchURL(urlFunction);
-					if (!options.blockImages) {
-						const resourceURL = normalizeURL(originalResourceURL);
-						const isDataURI = resourceURL.match(DATA_URI_PREFIX);
-						if ((!testIgnoredPath(resourceURL) || isDataURI) && (testValidURL(resourceURL) || isDataURI)) {
-							let { content, indexResource, contentType, extension } = await batchRequest.addURL(resourceURL,
-								{ asBinary: true, expectedType: "image" });
-							const name = "images/" + indexResource + extension;
-							findURLToken(originalResourceURL, declaration.value.children, token => {
-								if (!originalResourceURL.startsWith("#")) {
-									token.data.value = name;
-								}
-							});
-							resources.images.set(indexResource, { name, content, extension, contentType, url: resourceURL });
-						}
+	static async processStyle(ruleData, baseURI, options, resources, batchRequest) {
+		const urls = getUrlFunctions(ruleData);
+		await Promise.all(urls.map(async urlNode => {
+			const originalResourceURL = urlNode.value;
+			if (!options.blockImages) {
+				const resourceURL = normalizeURL(originalResourceURL);
+				if (!testIgnoredPath(resourceURL) && testValidURL(resourceURL)) {
+					let { content, indexResource, contentType, extension } = await batchRequest.addURL(resourceURL,
+						{ asBinary: true, expectedType: "image" });
+					const name = "images/" + indexResource + extension;
+					if (!isDataURL(resourceURL) && options.saveOriginalURLs) {
+						urlNode.value = "-sf-url-original(" + JSON.stringify(originalResourceURL) + ") " + name;
 					} else {
-						findURLToken(originalResourceURL, declaration.value.children, token => token.data.value = util.EMPTY_RESOURCE);
+						urlNode.value = name;
 					}
-				}));
+					resources.images.set(indexResource, { name, content, extension, contentType, url: resourceURL });
+				}
+			} else {
+				urlNode.value = util.EMPTY_RESOURCE;
 			}
 		}));
-
-		function findURLToken(url, children, callback, depth = 0) {
-			for (let token = children.head; token; token = token.next) {
-				if (token.data.children) {
-					findURLToken(url, token.data.children, callback, depth + 1);
-				}
-				if (token.data.type == "Url" && util.removeQuotes(getCSSValue(token.data.value)) == url) {
-					callback(token, children, depth == 0);
-				}
-			}
-		}
 	}
 
 	static async processAttribute(resourceElements, attributeName, baseURI, options, expectedType, resources, batchRequest, removeElementIfMissing) {
@@ -2104,18 +2021,6 @@ const HTTP_URI_PREFIX = /^https?:\/\//;
 const FILE_URI_PREFIX = /^file:\/\//;
 const EMPTY_URL = /^https?:\/\/+\s*$/;
 const NOT_EMPTY_URL = /^(https?:\/\/|file:\/\/|blob:).+/;
-const REGEXP_URL_FN = /(url\s*\(\s*'(.*?)'\s*\))|(url\s*\(\s*"(.*?)"\s*\))|(url\s*\(\s*(.*?)\s*\))/gi;
-const REGEXP_URL_SIMPLE_QUOTES_FN = /^url\s*\(\s*'(.*?)'\s*\)$/i;
-const REGEXP_URL_DOUBLE_QUOTES_FN = /^url\s*\(\s*"(.*?)"\s*\)$/i;
-const REGEXP_URL_NO_QUOTES_FN = /^url\s*\(\s*(.*?)\s*\)$/i;
-const REGEXP_IMPORT_FN = /(@import\s*url\s*\(\s*'(.*?)'\s*\)\s*(.*?)(;|$|}))|(@import\s*url\s*\(\s*"(.*?)"\s*\)\s*(.*?)(;|$|}))|(@import\s*url\s*\(\s*(.*?)\s*\)\s*(.*?)(;|$|}))|(@import\s*'(.*?)'\s*(.*?)(;|$|}))|(@import\s*"(.*?)"\s*(.*?)(;|$|}))|(@import\s*(.*?)\s*(.*?)(;|$|}))/gi;
-const REGEXP_IMPORT_URL_SIMPLE_QUOTES_FN = /@import\s*url\s*\(\s*'(.*?)'\s*\)\s*(.*?)(;|$|})/i;
-const REGEXP_IMPORT_URL_DOUBLE_QUOTES_FN = /@import\s*url\s*\(\s*"(.*?)"\s*\)\s*(.*?)(;|$|})/i;
-const REGEXP_IMPORT_URL_NO_QUOTES_FN = /@import\s*url\s*\(\s*(.*?)\s*\)\s*(.*?)(;|$|})/i;
-const REGEXP_IMPORT_SIMPLE_QUOTES_FN = /@import\s*'(.*?)'\s*(.*?)(;|$|})/i;
-const REGEXP_IMPORT_DOUBLE_QUOTES_FN = /@import\s*"(.*?)"\s*(.*?)(;|$|})/i;
-const REGEXP_IMPORT_NO_QUOTES_FN = /@import\s*(.*?)\s*(.*?)(;|$|})/i;
-const REGEXP_ESCAPE = /([{}()^$&.*?/+|[\\\\]|\]|-)/g;
 
 function getUpdatedResourceContent(resourceURL, content, options) {
 	if (options.rootDocument && options.updatedResources[resourceURL]) {
@@ -2131,20 +2036,6 @@ function normalizeURL(url) {
 		return url;
 	} else {
 		return url.split("#")[0];
-	}
-}
-
-function getCSSValue(value) {
-	if (typeof value == "string") {
-		return value;
-	} else {
-		let result = "";
-		try {
-			result = cssTree.generate(value);
-		} catch (error) {
-			// ignored
-		}
-		return result;
 	}
 }
 
@@ -2234,16 +2125,23 @@ function getLastSegment(url, replacementCharacter) {
 	return lastSegment;
 }
 
-function getRegExp(string) {
-	return new RegExp(string.replace(REGEXP_ESCAPE, "\\$1"), "gi");
+function getUrlFunctions(declarationList) {
+	return cssTree.findAll(declarationList, node => node.type == "Url");
 }
 
-function getUrlFunctions(stylesheetContent) {
-	return Array.from(new Set(stylesheetContent.match(REGEXP_URL_FN) || []));
+function getImportFunctions(declarationList) {
+	return cssTree.findAll(declarationList, node => node.type == "Atrule" && node.name == "import");
 }
 
-function getImportFunctions(stylesheetContent) {
-	return stylesheetContent.match(REGEXP_IMPORT_FN) || [];
+function generateStylesheetContent(stylesheet, options) {
+	let stylesheetContent = cssTree.generate(stylesheet);
+	if (options.compressCSS) {
+		stylesheetContent = util.compressCSS(stylesheetContent);
+	}
+	if (options.saveOriginalURLs) {
+		stylesheetContent = replaceOriginalURLs(stylesheetContent);
+	}
+	return stylesheetContent;
 }
 
 function findShortcutIcon(shortcutIcons) {
@@ -2252,30 +2150,12 @@ function findShortcutIcon(shortcutIcons) {
 	return shortcutIcons[0];
 }
 
-function matchURL(stylesheetContent) {
-	const match = stylesheetContent.match(REGEXP_URL_SIMPLE_QUOTES_FN) ||
-		stylesheetContent.match(REGEXP_URL_DOUBLE_QUOTES_FN) ||
-		stylesheetContent.match(REGEXP_URL_NO_QUOTES_FN);
-	return match && match[1];
-}
-
-function addOriginalURLs(stylesheetContent) {
-	return stylesheetContent.replace(REGEXP_URL_FN, function (match, _0, url, _1, url2, _2, url3) {
-		url = url || url2 || url3;
-		if (isDataURL(url)) {
-			return match;
-		} else {
-			return "-sf-url-original(" + JSON.stringify(url) + ") " + match;
-		}
-	});
-}
-
 function isDataURL(url) {
 	return url && (url.startsWith(DATA_URI_PREFIX) || url.startsWith(BLOB_URI_PREFIX));
 }
 
 function replaceOriginalURLs(stylesheetContent) {
-	return stylesheetContent.replace(/-sf-url-original\("(.*?)"\)/g, "/* original URL: $1 */");
+	return stylesheetContent.replace(/url\(-sf-url-original\\\(\\"(.*?)\\"\\\)\\ /g, "/* original URL: $1 */url(");
 }
 
 function testIgnoredPath(resourceURL) {
@@ -2288,35 +2168,6 @@ function testValidPath(resourceURL) {
 
 function testValidURL(resourceURL) {
 	return testValidPath(resourceURL) && (resourceURL.match(HTTP_URI_PREFIX) || resourceURL.match(FILE_URI_PREFIX) || resourceURL.startsWith(BLOB_URI_PREFIX)) && resourceURL.match(NOT_EMPTY_URL);
-}
-
-function matchImport(stylesheetContent) {
-	const match = stylesheetContent.match(REGEXP_IMPORT_URL_SIMPLE_QUOTES_FN) ||
-		stylesheetContent.match(REGEXP_IMPORT_URL_DOUBLE_QUOTES_FN) ||
-		stylesheetContent.match(REGEXP_IMPORT_URL_NO_QUOTES_FN) ||
-		stylesheetContent.match(REGEXP_IMPORT_SIMPLE_QUOTES_FN) ||
-		stylesheetContent.match(REGEXP_IMPORT_DOUBLE_QUOTES_FN) ||
-		stylesheetContent.match(REGEXP_IMPORT_NO_QUOTES_FN);
-	if (match) {
-		const [, resourceURL, media] = match;
-		return { resourceURL, media };
-	}
-}
-
-function removeCssComments(stylesheetContent) {
-	try {
-		return stylesheetContent.replace(/\/\*(.|[\r\n])*?\*\//g, "");
-	} catch (error) {
-		let start, end;
-		do {
-			start = stylesheetContent.indexOf("/*");
-			end = stylesheetContent.indexOf("*/", start + 2);
-			if (start != -1 && end != -1) {
-				stylesheetContent = stylesheetContent.substring(0, start) + stylesheetContent.substr(end + 2);
-			}
-		} while (start != -1 && end != -1);
-		return stylesheetContent;
-	}
 }
 
 function wrapMediaQuery(stylesheetContent, mediaQuery) {
