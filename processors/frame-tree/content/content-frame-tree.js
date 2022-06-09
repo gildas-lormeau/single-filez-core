@@ -234,7 +234,6 @@ function initResponse(message) {
 				frameData.videos = messageFrameData.videos;
 				frameData.usedFonts = messageFrameData.usedFonts;
 				frameData.shadowRoots = messageFrameData.shadowRoots;
-				frameData.imports = messageFrameData.imports;
 				frameData.processed = messageFrameData.processed;
 			}
 		});
@@ -403,7 +402,6 @@ function getFrameData(document, globalThis, windowId, options) {
 		videos: docData.videos,
 		usedFonts: docData.usedFonts,
 		shadowRoots: docData.shadowRoots,
-		imports: docData.imports,
 		processed: true
 	};
 }

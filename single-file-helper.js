@@ -39,7 +39,6 @@ const IMAGE_ATTRIBUTE_NAME = "data-single-filez-image";
 const POSTER_ATTRIBUTE_NAME = "data-single-filez-poster";
 const VIDEO_ATTRIBUTE_NAME = "data-single-filez-video";
 const CANVAS_ATTRIBUTE_NAME = "data-single-filez-canvas";
-const HTML_IMPORT_ATTRIBUTE_NAME = "data-single-filez-import";
 const STYLE_ATTRIBUTE_NAME = "data-single-filez-movable-style";
 const INPUT_VALUE_ATTRIBUTE_NAME = "data-single-filez-input-value";
 const LAZY_SRC_ATTRIBUTE_NAME = "data-single-filez-lazy-loaded-src";
@@ -89,7 +88,6 @@ export {
 	CANVAS_ATTRIBUTE_NAME,
 	INPUT_VALUE_ATTRIBUTE_NAME,
 	SHADOW_ROOT_ATTRIBUTE_NAME,
-	HTML_IMPORT_ATTRIBUTE_NAME,
 	STYLE_ATTRIBUTE_NAME,
 	LAZY_SRC_ATTRIBUTE_NAME,
 	STYLESHEET_ATTRIBUTE_NAME,
@@ -163,7 +161,6 @@ function preProcessDoc(doc, win, options) {
 			videos: [],
 			usedFonts: [],
 			shadowRoots: [],
-			imports: [],
 			markedElements: []
 		};
 	}
@@ -176,14 +173,13 @@ function preProcessDoc(doc, win, options) {
 		videos: elementsInfo.videos,
 		usedFonts: Array.from(elementsInfo.usedFonts.values()),
 		shadowRoots: elementsInfo.shadowRoots,
-		imports: elementsInfo.imports,
 		referrer: doc.referrer,
 		markedElements: elementsInfo.markedElements,
 		invalidElements
 	};
 }
 
-function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map(), canvases: [], images: [], posters: [], videos: [], shadowRoots: [], imports: [], markedElements: [] }, ascendantHidden) {
+function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map(), canvases: [], images: [], posters: [], videos: [], shadowRoots: [], markedElements: [] }, ascendantHidden) {
 	const elements = Array.from(element.childNodes).filter(node => (node instanceof win.HTMLElement) || (node instanceof win.SVGElement));
 	elements.forEach(element => {
 		let elementHidden, elementKept, computedStyle;
@@ -308,13 +304,6 @@ function getResourcesInfo(win, doc, element, options, data, elementHidden) {
 			data.markedElements.push(element);
 		}
 	}
-	if (element.tagName == "LINK") {
-		if (element.import && element.import.documentElement) {
-			data.imports.push({ content: serialize(element.import) });
-			element.setAttribute(HTML_IMPORT_ATTRIBUTE_NAME, data.imports.length - 1);
-			data.markedElements.push(element);
-		}
-	}
 	if (element.tagName == "INPUT") {
 		if (element.type != "password") {
 			element.setAttribute(INPUT_VALUE_ATTRIBUTE_NAME, element.value);
@@ -413,7 +402,7 @@ function postProcessDoc(doc, markedElements, invalidElements) {
 		doc.head.querySelectorAll("*:not(base):not(link):not(meta):not(noscript):not(script):not(style):not(template):not(title)").forEach(element => element.removeAttribute("hidden"));
 	}
 	if (!markedElements) {
-		const singleFileAttributes = [REMOVED_CONTENT_ATTRIBUTE_NAME, HIDDEN_FRAME_ATTRIBUTE_NAME, HIDDEN_CONTENT_ATTRIBUTE_NAME, PRESERVED_SPACE_ELEMENT_ATTRIBUTE_NAME, IMAGE_ATTRIBUTE_NAME, POSTER_ATTRIBUTE_NAME, VIDEO_ATTRIBUTE_NAME, CANVAS_ATTRIBUTE_NAME, INPUT_VALUE_ATTRIBUTE_NAME, SHADOW_ROOT_ATTRIBUTE_NAME, HTML_IMPORT_ATTRIBUTE_NAME, STYLESHEET_ATTRIBUTE_NAME, ASYNC_SCRIPT_ATTRIBUTE_NAME];
+		const singleFileAttributes = [REMOVED_CONTENT_ATTRIBUTE_NAME, HIDDEN_FRAME_ATTRIBUTE_NAME, HIDDEN_CONTENT_ATTRIBUTE_NAME, PRESERVED_SPACE_ELEMENT_ATTRIBUTE_NAME, IMAGE_ATTRIBUTE_NAME, POSTER_ATTRIBUTE_NAME, VIDEO_ATTRIBUTE_NAME, CANVAS_ATTRIBUTE_NAME, INPUT_VALUE_ATTRIBUTE_NAME, SHADOW_ROOT_ATTRIBUTE_NAME, STYLESHEET_ATTRIBUTE_NAME, ASYNC_SCRIPT_ATTRIBUTE_NAME];
 		markedElements = doc.querySelectorAll(singleFileAttributes.map(name => "[" + name + "]").join(","));
 	}
 	markedElements.forEach(element => {
@@ -428,7 +417,6 @@ function postProcessDoc(doc, markedElements, invalidElements) {
 		element.removeAttribute(CANVAS_ATTRIBUTE_NAME);
 		element.removeAttribute(INPUT_VALUE_ATTRIBUTE_NAME);
 		element.removeAttribute(SHADOW_ROOT_ATTRIBUTE_NAME);
-		element.removeAttribute(HTML_IMPORT_ATTRIBUTE_NAME);
 		element.removeAttribute(STYLESHEET_ATTRIBUTE_NAME);
 		element.removeAttribute(ASYNC_SCRIPT_ATTRIBUTE_NAME);
 		element.removeAttribute(STYLE_ATTRIBUTE_NAME);
