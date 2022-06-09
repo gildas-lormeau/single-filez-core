@@ -1028,10 +1028,11 @@ class Processor {
 			if (element.media) {
 				mediaText = element.media.toLowerCase();
 			}
-			const stylesheetInfo = { mediaText };
-			if (element.closest("[" + SHADOWROOT_ATTRIBUTE_NAME + "]")) {
-				stylesheetInfo.scoped = true;
-			}
+			const scoped = Boolean(element.closest("[" + SHADOWROOT_ATTRIBUTE_NAME + "]"));
+			const stylesheetInfo = {
+				mediaText,
+				scoped
+			};
 			if (element.tagName == "LINK") {
 				element.removeAttribute("integrity");
 				if (element.charset) {
@@ -1039,50 +1040,38 @@ class Processor {
 				}
 				stylesheetInfo.url = element.href;
 			}
-			await processElement(element, stylesheetInfo, this.stylesheets, this.baseURI, options, this.workStyleElement);
+			await getStylesheet(stylesheetInfo, element, this.baseURI, this.options, this.workStyleElement, this.resources, this.stylesheets);
 		}));
 		if (this.options.rootDocument) {
 			const newResources = Object.keys(this.options.updatedResources).filter(url => this.options.updatedResources[url].type == "stylesheet" && !this.options.updatedResources[url].retrieved).map(url => this.options.updatedResources[url]);
 			await Promise.all(newResources.map(async resource => {
 				resource.retrieved = true;
-				const stylesheetInfo = {};
-				const element = this.doc.createElement("style");
-				this.doc.body.appendChild(element);
-				element.textContent = resource.content;
-				await processElement(element, stylesheetInfo, this.stylesheets, this.baseURI, this.options, this.workStyleElement);
+				if (!this.options.blockStylesheets) {
+					const stylesheetInfo = {};
+					const element = this.doc.createElement("style");
+					this.doc.body.appendChild(element);
+					element.textContent = resource.content;
+					await getStylesheet(stylesheetInfo, element, this.baseURI, this.options, this.workStyleElement, this.resources, this.stylesheets);
+				}
 			}));
 		}
 
-		async function processElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement) {
-			let stylesheet;
-			stylesheets.set(element, stylesheetInfo);
-			if (!options.blockStylesheets) {
-				stylesheet = await getStylesheet(element, baseURI, options, workStyleElement);
-			}
-			if (stylesheet && stylesheet.children) {
-				if (options.compressCSS) {
-					ProcessorHelper.removeSingleLineCssComments(stylesheet);
-				}
-				stylesheetInfo.stylesheet = stylesheet;
-			} else {
-				stylesheets.delete(element);
-			}
-		}
-
-		async function getStylesheet(element, baseURI, options, workStyleElement) {
-			let stylesheet;
-			if (!options.blockStylesheets) {
+		async function getStylesheet(stylesheetInfo, element, baseURI, options, workStylesheet, resources, stylesheets) {
+			if (options.blockStylesheets) {
 				if (element.tagName == "LINK") {
-					stylesheet = await ProcessorHelper.resolveLinkStylesheetURLs(element.href, baseURI, options, workStyleElement);
+					element.href = util.EMPTY_RESOURCE;
 				} else {
-					stylesheet = cssTree.parse(element.textContent, { context: "stylesheet", parseCustomProperty: true });
-					const importFound = await ProcessorHelper.resolveImportURLs(stylesheet, baseURI, options, workStyleElement);
-					if (importFound) {
-						stylesheet = cssTree.parse(cssTree.generate(stylesheet), { context: "stylesheet", parseCustomProperty: true });
-					}
+					element.textContent = "";
+				}
+			} else {
+				if (element.tagName == "LINK") {
+					await ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, element.href, baseURI, options, workStylesheet, resources, stylesheets);
+				} else {
+					stylesheets.set({ element }, stylesheetInfo);
+					stylesheetInfo.stylesheet = cssTree.parse(element.textContent, { context: "stylesheet", parseCustomProperty: true });
+					await ProcessorHelper.resolveImportURLs(stylesheetInfo, baseURI, options, workStylesheet, resources, stylesheets);
 				}
 			}
-			return stylesheet;
 		}
 	}
 
@@ -1570,18 +1559,21 @@ class ProcessorHelper {
 	}
 
 	static removeSingleLineCssComments(stylesheet) {
-		const removedRules = [];
-		for (let cssRule = stylesheet.children.head; cssRule; cssRule = cssRule.next) {
-			const ruleData = cssRule.data;
-			if (ruleData.type == "Raw" && ruleData.value && ruleData.value.trim().startsWith("//")) {
-				removedRules.push(cssRule);
+		if (stylesheet.children) {
+			const removedRules = [];
+			for (let cssRule = stylesheet.children.head; cssRule; cssRule = cssRule.next) {
+				const ruleData = cssRule.data;
+				if (ruleData.type == "Raw" && ruleData.value && ruleData.value.trim().startsWith("//")) {
+					removedRules.push(cssRule);
+				}
 			}
+			removedRules.forEach(cssRule => stylesheet.children.remove(cssRule));
 		}
-		removedRules.forEach(cssRule => stylesheet.children.remove(cssRule));
 	}
 
-	static async resolveImportURLs(stylesheet, baseURI, options, workStylesheet, importedStyleSheets = new Set(),) {
-		let importFound;
+	static async resolveImportURLs(stylesheetInfo, baseURI, options, workStylesheet, resources, stylesheets) {
+		const stylesheet = stylesheetInfo.stylesheet;
+		const scoped = stylesheetInfo.scoped;
 		ProcessorHelper.resolveStylesheetURLs(stylesheet, baseURI, workStylesheet);
 		const imports = getImportFunctions(stylesheet);
 		await Promise.all(imports.map(async node => {
@@ -1594,29 +1586,38 @@ class ProcessorHelper {
 				} catch (error) {
 					// ignored
 				}
-				if (testValidURL(resourceURL) && !importedStyleSheets.has(resourceURL)) {
-					const content = await getStylesheetContent(resourceURL);
-					resourceURL = content.resourceURL;
-					content.data = getUpdatedResourceContent(resourceURL, content, options);
-					if (content.data && content.data.match(/^<!doctype /i)) {
-						content.data = "";
-					}
+				if (testValidURL(resourceURL)) {
 					const mediaQueryListNode = cssTree.find(node, node => node.type == "MediaQueryList");
+					let mediaText;
 					if (mediaQueryListNode) {
-						content.data = wrapMediaQuery(content.data, cssTree.generate(mediaQueryListNode));
+						mediaText = cssTree.generate(mediaQueryListNode);
 					}
-					const importedStylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
-					const ancestorStyleSheets = new Set(importedStyleSheets);
-					ancestorStyleSheets.add(resourceURL);
-					await ProcessorHelper.resolveImportURLs(importedStylesheet, resourceURL, options, workStylesheet, ancestorStyleSheets);
-					for (let keyName of Object.keys(importedStylesheet)) {
-						node[keyName] = importedStylesheet[keyName];
+					const existingStylesheet = Array.from(stylesheets).find(([, stylesheetInfo]) => stylesheetInfo.resourceURL == resourceURL);
+					if (existingStylesheet) {
+						stylesheets.set({ urlNode }, {
+							url: resourceURL,
+							stylesheet: existingStylesheet[1].stylesheet, scoped
+						});
+					} else {
+						const stylesheetInfo = {
+							scoped,
+							mediaText
+						};
+						stylesheets.set({ urlNode }, stylesheetInfo);
+						const content = await getStylesheetContent(resourceURL);
+						stylesheetInfo.url = resourceURL = content.resourceURL;
+						const existingStylesheet = Array.from(stylesheets).find(([, stylesheetInfo]) => stylesheetInfo.resourceURL == resourceURL);
+						if (existingStylesheet) {
+							stylesheets.set({ urlNode }, { url: resourceURL, stylesheet: existingStylesheet[1].stylesheet, scoped });
+						} else {
+							content.data = getUpdatedResourceContent(resourceURL, content, options);
+							stylesheetInfo.stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
+							await ProcessorHelper.resolveImportURLs(stylesheetInfo, resourceURL, options, workStylesheet, resources, stylesheets);
+						}
 					}
-					importFound = true;
 				}
 			}
 		}));
-		return importFound;
 
 		async function getStylesheetContent(resourceURL) {
 			const content = await util.getContent(resourceURL, {
@@ -1682,37 +1683,48 @@ class ProcessorHelper {
 		});
 	}
 
-	static async resolveLinkStylesheetURLs(resourceURL, baseURI, options, workStylesheet) {
+	static async resolveLinkStylesheetURLs(stylesheetInfo, element, resourceURL, baseURI, options, workStylesheet, resources, stylesheets) {
 		resourceURL = normalizeURL(resourceURL);
 		if (resourceURL && resourceURL != baseURI && resourceURL != ABOUT_BLANK_URI) {
-			const content = await util.getContent(resourceURL, {
-				maxResourceSize: options.maxResourceSize,
-				maxResourceSizeEnabled: options.maxResourceSizeEnabled,
-				charset: options.charset,
-				frameId: options.frameId,
-				resourceReferrer: options.resourceReferrer,
-				validateTextContentType: true,
-				baseURI: baseURI,
-				blockMixedContent: options.blockMixedContent,
-				expectedType: "stylesheet",
-				acceptHeaders: options.acceptHeaders,
-				networkTimeout: options.networkTimeout
-			});
-			if (!(matchCharsetEquals(content.data, content.charset) || matchCharsetEquals(content.data, options.charset))) {
-				options = Object.assign({}, options, { charset: getCharset(content.data) });
-				return ProcessorHelper.resolveLinkStylesheetURLs(resourceURL, baseURI, options, workStylesheet);
+			const existingStylesheet = Array.from(stylesheets).find(([, otherStylesheetInfo]) => otherStylesheetInfo.resourceURL == resourceURL);
+			if (existingStylesheet) {
+				stylesheets.set({ element }, {
+					url: resourceURL,
+					stylesheet: existingStylesheet[1].stylesheet,
+					mediaText: stylesheetInfo.mediaText
+				});
+			} else {
+				stylesheets.set({ element }, stylesheetInfo);
+				const content = await util.getContent(resourceURL, {
+					maxResourceSize: options.maxResourceSize,
+					maxResourceSizeEnabled: options.maxResourceSizeEnabled,
+					charset: options.charset,
+					frameId: options.frameId,
+					resourceReferrer: options.resourceReferrer,
+					validateTextContentType: true,
+					baseURI: baseURI,
+					blockMixedContent: options.blockMixedContent,
+					expectedType: "stylesheet",
+					acceptHeaders: options.acceptHeaders,
+					networkTimeout: options.networkTimeout
+				});
+				if (!(matchCharsetEquals(content.data, content.charset) || matchCharsetEquals(content.data, options.charset))) {
+					options = Object.assign({}, options, { charset: getCharset(content.data) });
+					ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, resourceURL, baseURI, options, workStylesheet, resources, stylesheets);
+				}
+				resourceURL = content.resourceURL;
+				if (existingStylesheet) {
+					stylesheets.set({ element }, {
+						url: resourceURL,
+						stylesheet: existingStylesheet[1].stylesheet,
+						mediaText: stylesheetInfo.mediaText
+					});
+				} else {
+					content.data = getUpdatedResourceContent(content.resourceURL, content, options);
+					stylesheetInfo.stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
+					await ProcessorHelper.resolveImportURLs(stylesheetInfo, resourceURL, options, workStylesheet, resources, stylesheets);
+				}
 			}
-			resourceURL = content.resourceURL;
-			content.data = getUpdatedResourceContent(content.resourceURL, content, options);
-			if (content.data && content.data.match(/^<!doctype /i)) {
-				content.data = "";
-			}
-			let stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
-			const importFound = await ProcessorHelper.resolveImportURLs(stylesheet, resourceURL, options, workStylesheet);
-			if (importFound) {
-				stylesheet = cssTree.parse(cssTree.generate(stylesheet), { context: "stylesheet", parseCustomProperty: true });
-			}
-			return stylesheet;
 		}
 	}
 
@@ -2068,6 +2080,9 @@ function getImportFunctions(declarationList) {
 }
 
 function generateStylesheetContent(stylesheet, options) {
+	if (options.compressCSS) {
+		ProcessorHelper.removeSingleLineCssComments(stylesheet);
+	}
 	let stylesheetContent = cssTree.generate(stylesheet);
 	if (options.compressCSS) {
 		stylesheetContent = util.compressCSS(stylesheetContent);
@@ -2102,14 +2117,6 @@ function testValidPath(resourceURL) {
 
 function testValidURL(resourceURL) {
 	return testValidPath(resourceURL) && (resourceURL.match(HTTP_URI_PREFIX) || resourceURL.match(FILE_URI_PREFIX) || resourceURL.startsWith(BLOB_URI_PREFIX)) && resourceURL.match(NOT_EMPTY_URL);
-}
-
-function wrapMediaQuery(stylesheetContent, mediaQuery) {
-	if (mediaQuery) {
-		return "@media " + mediaQuery + "{ " + stylesheetContent + " }";
-	} else {
-		return stylesheetContent;
-	}
 }
 
 function log(...args) {
