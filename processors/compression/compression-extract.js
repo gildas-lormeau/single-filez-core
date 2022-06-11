@@ -108,7 +108,7 @@ async function extract(content, { password, prompt = () => { }, shadowRootScript
 				resources.forEach(innerResource => {
 					if (innerResource.filename.startsWith(prefixPath) && innerResource.filename != resource.filename) {
 						const filename = innerResource.filename.substring(prefixPath.length);
-						if (!filename.match(/(index\.html|manifest\.json)$/)) {
+						if (!filename.match(/manifest\.json$/)) {
 							const searchRegExp = new RegExp(filename.replace(REGEXP_ESCAPE, "\\$1"), "g");
 							const position = resource.textContent.search(searchRegExp);
 							if (position != -1) {
