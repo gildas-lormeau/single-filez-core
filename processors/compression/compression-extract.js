@@ -106,13 +106,15 @@ async function extract(content, { password, prompt = () => { }, shadowRootScript
 			const isScript = resource.filename.match(/scripts\/[0-9]+\.js/);
 			if (!isScript) {
 				resources.forEach(innerResource => {
-					if (!innerResource.filename.match(/^([0-9_]+\/)?(index\.html|manifest\.json)$/) && innerResource.filename.startsWith(prefixPath) && innerResource.filename != resource.filename) {
+					if (innerResource.filename.startsWith(prefixPath) && innerResource.filename != resource.filename) {
 						const filename = innerResource.filename.substring(prefixPath.length);
-						const searchRegExp = new RegExp(filename.replace(REGEXP_ESCAPE, "\\$1"), "g");
-						const position = resource.textContent.search(searchRegExp);
-						if (position != -1) {
-							innerResource.parentResources.push(resource.filename);
-							resource.textContent = resource.textContent.replace(searchRegExp, innerResource.content);
+						if (!filename.match(/(index\.html|manifest\.json)$/)) {
+							const searchRegExp = new RegExp(filename.replace(REGEXP_ESCAPE, "\\$1"), "g");
+							const position = resource.textContent.search(searchRegExp);
+							if (position != -1) {
+								innerResource.parentResources.push(resource.filename);
+								resource.textContent = resource.textContent.replace(searchRegExp, innerResource.content);
+							}
 						}
 					}
 				});
