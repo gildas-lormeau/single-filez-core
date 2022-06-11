@@ -100,13 +100,13 @@ async function extract(content, { password, prompt = () => { }, shadowRootScript
 			if (prefixPathMatch && prefixPathMatch[1]) {
 				prefixPath = prefixPathMatch[1];
 			}
-			if (resource.filename.match(/^([0-9_]+\/)?index.html$/)) {
+			if (resource.filename.match(/^([0-9_]+\/)?index\.html$/)) {
 				origDocContent = resource.textContent;
 			}
 			const isScript = resource.filename.match(/scripts\/[0-9]+\.js/);
 			if (!isScript) {
 				resources.forEach(innerResource => {
-					if (innerResource.filename.startsWith(prefixPath) && innerResource.filename != resource.filename) {
+					if (!innerResource.filename.match(/^([0-9_]+\/)?(index\.html|manifest\.json)$/) && innerResource.filename.startsWith(prefixPath) && innerResource.filename != resource.filename) {
 						const filename = innerResource.filename.substring(prefixPath.length);
 						const searchRegExp = new RegExp(filename.replace(REGEXP_ESCAPE, "\\$1"), "g");
 						const position = resource.textContent.search(searchRegExp);
@@ -128,7 +128,7 @@ async function extract(content, { password, prompt = () => { }, shadowRootScript
 					resource.textContent = resource.textContent.replace(/<script data-template-shadow-root.*<\/script>/g, "<script data-template-shadow-root src=" + shadowRootScriptURL + "></" + "script>");
 				}
 			}
-			if (resource.filename.match(/^([0-9_]+\/)?index.html$/)) {
+			if (resource.filename.match(/^([0-9_]+\/)?index\.html$/)) {
 				docContent = resource.textContent;
 				url = resource.url;
 			} else {
