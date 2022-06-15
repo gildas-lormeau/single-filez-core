@@ -1014,10 +1014,14 @@ class Processor {
 
 	resolveStyleAttributeURLs() {
 		this.doc.querySelectorAll("[style]").forEach(element => {
-			const styleContent = element.getAttribute("style");
-			const declarationList = cssTree.parse(styleContent, { context: "declarationList", parseCustomProperty: true });
-			ProcessorHelper.resolveStylesheetURLs(declarationList, this.baseURI, this.workStyleElement);
-			this.styles.set(element, declarationList);
+			if (this.options.blockStylesheets) {
+				element.removeAttribute("style");
+			} else {
+				const styleContent = element.getAttribute("style");
+				const declarationList = cssTree.parse(styleContent, { context: "declarationList", parseCustomProperty: true });
+				ProcessorHelper.resolveStylesheetURLs(declarationList, this.baseURI, this.workStyleElement);
+				this.styles.set(element, declarationList);
+			}
 		});
 	}
 
