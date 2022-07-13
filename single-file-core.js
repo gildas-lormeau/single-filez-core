@@ -1582,41 +1582,43 @@ class ProcessorHelper {
 		const imports = getImportFunctions(stylesheet);
 		await Promise.all(imports.map(async node => {
 			const urlNode = cssTree.find(node, node => node.type == "Url") || cssTree.find(node, node => node.type == "String");
-			let resourceURL = normalizeURL(urlNode.value);
-			if (!testIgnoredPath(resourceURL) && testValidPath(resourceURL)) {
-				urlNode.value = util.EMPTY_RESOURCE;
-				try {
-					resourceURL = util.resolveURL(resourceURL, baseURI);
-				} catch (error) {
-					// ignored
-				}
-				if (testValidURL(resourceURL)) {
-					const mediaQueryListNode = cssTree.find(node, node => node.type == "MediaQueryList");
-					let mediaText;
-					if (mediaQueryListNode) {
-						mediaText = cssTree.generate(mediaQueryListNode);
+			if (urlNode) {
+				let resourceURL = normalizeURL(urlNode.value);
+				if (!testIgnoredPath(resourceURL) && testValidPath(resourceURL)) {
+					urlNode.value = util.EMPTY_RESOURCE;
+					try {
+						resourceURL = util.resolveURL(resourceURL, baseURI);
+					} catch (error) {
+						// ignored
 					}
-					const existingStylesheet = Array.from(stylesheets).find(([, stylesheetInfo]) => stylesheetInfo.resourceURL == resourceURL);
-					if (existingStylesheet) {
-						stylesheets.set({ urlNode }, {
-							url: resourceURL,
-							stylesheet: existingStylesheet[1].stylesheet, scoped
-						});
-					} else {
-						const stylesheetInfo = {
-							scoped,
-							mediaText
-						};
-						stylesheets.set({ urlNode }, stylesheetInfo);
-						const content = await getStylesheetContent(resourceURL);
-						stylesheetInfo.url = resourceURL = content.resourceURL;
+					if (testValidURL(resourceURL)) {
+						const mediaQueryListNode = cssTree.find(node, node => node.type == "MediaQueryList");
+						let mediaText;
+						if (mediaQueryListNode) {
+							mediaText = cssTree.generate(mediaQueryListNode);
+						}
 						const existingStylesheet = Array.from(stylesheets).find(([, stylesheetInfo]) => stylesheetInfo.resourceURL == resourceURL);
 						if (existingStylesheet) {
-							stylesheets.set({ urlNode }, { url: resourceURL, stylesheet: existingStylesheet[1].stylesheet, scoped });
+							stylesheets.set({ urlNode }, {
+								url: resourceURL,
+								stylesheet: existingStylesheet[1].stylesheet, scoped
+							});
 						} else {
-							content.data = getUpdatedResourceContent(resourceURL, content, options);
-							stylesheetInfo.stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
-							await ProcessorHelper.resolveImportURLs(stylesheetInfo, resourceURL, options, workStylesheet, resources, stylesheets);
+							const stylesheetInfo = {
+								scoped,
+								mediaText
+							};
+							stylesheets.set({ urlNode }, stylesheetInfo);
+							const content = await getStylesheetContent(resourceURL);
+							stylesheetInfo.url = resourceURL = content.resourceURL;
+							const existingStylesheet = Array.from(stylesheets).find(([, stylesheetInfo]) => stylesheetInfo.resourceURL == resourceURL);
+							if (existingStylesheet) {
+								stylesheets.set({ urlNode }, { url: resourceURL, stylesheet: existingStylesheet[1].stylesheet, scoped });
+							} else {
+								content.data = getUpdatedResourceContent(resourceURL, content, options);
+								stylesheetInfo.stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
+								await ProcessorHelper.resolveImportURLs(stylesheetInfo, resourceURL, options, workStylesheet, resources, stylesheets);
+							}
 						}
 					}
 				}
