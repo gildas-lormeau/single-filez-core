@@ -352,7 +352,7 @@ class BatchRequest {
 				});
 				onloadListener({ url: resourceURL });
 				if (!this.cancelled) {
-					const extension = util.getFilenameExtension(resourceURL, options.filenameReplacedCharacters, options.filenameReplacementCharacter) || util.getContentTypeExtension(content.contentType);
+					const extension = util.getContentTypeExtension(content.contentType) || util.getFilenameExtension(resourceURL, options.filenameReplacedCharacters, options.filenameReplacementCharacter);
 					resourceRequests.forEach(callbacks => callbacks.resolve({ content: content.data, indexResource: currentIndexResource, contentType: content.contentType, extension }));
 				}
 			} catch (error) {
