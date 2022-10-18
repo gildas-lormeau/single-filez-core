@@ -146,7 +146,7 @@ function preProcessDoc(doc, win, options) {
 		elementsInfo = getElementsInfo(win, doc, doc.documentElement, options);
 		if (options.moveStylesInHead) {
 			doc.querySelectorAll("body style, body ~ style").forEach(element => {
-				const computedStyle = win.getComputedStyle(element);
+				const computedStyle = getComputedStyle(win, element);
 				if (computedStyle && testHiddenElement(element, computedStyle)) {
 					element.setAttribute(STYLE_ATTRIBUTE_NAME, "");
 					elementsInfo.markedElements.push(element);
@@ -184,7 +184,7 @@ function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map
 	elements.forEach(element => {
 		let elementHidden, elementKept, computedStyle;
 		if (options.removeHiddenElements || options.removeUnusedFonts || options.compressHTML) {
-			computedStyle = win.getComputedStyle(element);
+			computedStyle = getComputedStyle(win, element);
 			if (element instanceof win.HTMLElement) {
 				if (options.removeHiddenElements) {
 					elementKept = ((ascendantHidden || element.closest("html > head")) && KEPT_TAG_NAMES.includes(element.tagName)) || element.closest("details");
@@ -207,9 +207,9 @@ function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map
 				}
 				if (options.removeUnusedFonts) {
 					getUsedFont(computedStyle, options, data.usedFonts);
-					getUsedFont(win.getComputedStyle(element, ":first-letter"), options, data.usedFonts);
-					getUsedFont(win.getComputedStyle(element, ":before"), options, data.usedFonts);
-					getUsedFont(win.getComputedStyle(element, ":after"), options, data.usedFonts);
+					getUsedFont(getComputedStyle(win, element, ":first-letter"), options, data.usedFonts);
+					getUsedFont(getComputedStyle(win, element, ":before"), options, data.usedFonts);
+					getUsedFont(getComputedStyle(win, element, ":after"), options, data.usedFonts);
 				}
 			}
 		}
@@ -271,9 +271,9 @@ function getResourcesInfo(win, doc, element, options, data, elementHidden) {
 	if (element.tagName == "VIDEO") {
 		const src = element.currentSrc;
 		if (src && !src.startsWith("blob:") && !src.startsWith("data:")) {
-			const positionParent = win.getComputedStyle(element.parentNode).getPropertyValue("position");
+			const computedStyle = getComputedStyle(win, element.parentNode);
 			data.videos.push({
-				positionParent,
+				positionParent: computedStyle && computedStyle.getPropertyValue("position"),
 				src,
 				size: {
 					pxWidth: element.clientWidth,
@@ -487,4 +487,12 @@ function getFontWeight(weight) {
 
 function flatten(array) {
 	return array.flat ? array.flat() : array.reduce((a, b) => a.concat(Array.isArray(b) ? flatten(b) : b), []);
+}
+
+function getComputedStyle(win, element, pseudoElement) {
+	try {
+		return win.getComputedStyle(element, pseudoElement);
+	} catch (error) {
+		// ignored
+	}
 }
