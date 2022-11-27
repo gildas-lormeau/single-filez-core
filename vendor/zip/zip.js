@@ -1788,7 +1788,7 @@ function createWebWorkerInterface(workerData, config) {
 			url = url();
 		}
 		try {
-			scriptUrl = new URL(url, baseURL);
+			scriptUrl = new URL(url, baseURL).href;
 		} catch (_error) {
 			scriptUrl = url;
 		}
