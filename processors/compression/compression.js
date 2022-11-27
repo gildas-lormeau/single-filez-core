@@ -21,7 +21,7 @@
  *   Source.
  */
 
-/* global globalThis, Blob, document, fetch, XMLHttpRequest, TextEncoder, DOMParser, stop, setTimeout, clearTimeout */
+/* global globalThis */
 
 import {
 	configure,
@@ -36,6 +36,8 @@ import {
 import {
 	display
 } from "./compression-display.js";
+
+const { Blob, document, fetch, XMLHttpRequest, TextEncoder, DOMParser, stop, setTimeout, clearTimeout } = globalThis;
 
 const NO_COMPRESSION_EXTENSIONS = [".jpg", ".jpeg", ".png", ".pdf", ".woff2", ".mp4", ".mp3", ".ogg", ".webp", ".webm"];
 const SCRIPT_PATH = "/lib/single-file-zip.min.js";
