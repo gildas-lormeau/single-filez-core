@@ -37,7 +37,7 @@ import {
 	display
 } from "./compression-display.js";
 
-const { Blob, document, fetch, XMLHttpRequest, TextEncoder, DOMParser, stop, setTimeout, clearTimeout } = globalThis;
+const { Blob, fetch, TextEncoder, DOMParser, stop } = globalThis;
 
 const NO_COMPRESSION_EXTENSIONS = [".jpg", ".jpeg", ".png", ".pdf", ".woff2", ".mp4", ".mp3", ".ogg", ".webp", ".webm"];
 const SCRIPT_PATH = "/lib/single-file-zip.min.js";
@@ -146,6 +146,7 @@ async function addFile(zipWriter, prefixName, data) {
 }
 
 async function getContent() {
+	const { XMLHttpRequest, document, setTimeout, clearTimeout } = globalThis;
 	const xhr = new XMLHttpRequest();
 	let displayTimeout;
 	Array.from(document.documentElement.childNodes).forEach(node => {
