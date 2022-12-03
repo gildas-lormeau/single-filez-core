@@ -91,7 +91,7 @@ async function process(pageData, options) {
 			pageContent += "\n<main hidden>\n" + doc.body.innerText.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim() + "\n</main>\n";
 		}
 		pageContent += "</body><xmp><![CDATA[";
-		await blobWriter.writeUint8Array((new TextEncoder()).encode(pageContent));
+		await writeData(blobWriter.writable, (new TextEncoder()).encode(pageContent));
 	}
 	const zipWriter = new ZipWriter(blobWriter);
 	pageData.url = options.url;
@@ -100,6 +100,13 @@ async function process(pageData, options) {
 	const comment = (new TextEncoder()).encode("]]></xmp></html>");
 	const data = await zipWriter.close(comment);
 	return data;
+}
+async function writeData(writable, array) {
+	const streamWriter = writable.getWriter();
+	await streamWriter.ready;
+	writable.size = array.length;
+	await streamWriter.write(array);
+	streamWriter.releaseLock();
 }
 
 async function addPageResources(zipWriter, pageData, options, prefixName, url) {
