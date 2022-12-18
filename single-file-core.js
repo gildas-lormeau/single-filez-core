@@ -473,7 +473,7 @@ class Processor {
 			const infobarContent = (this.options.infobarContent || "").replace(/\\n/g, "\n").replace(/\\t/g, "\t");
 			const commentNode = this.doc.createComment("\n " + util.COMMENT_HEADER +
 				" \n url: " + infobarURL +
-				" \n saved date: " + infobarSaveDate +
+				(this.options.removeSavedDate ? " " : " \n saved date: " + infobarSaveDate) +
 				(infobarContent ? " \n info: " + infobarContent : "") + "\n");
 			this.doc.documentElement.insertBefore(commentNode, this.doc.documentElement.firstChild);
 		}
