@@ -662,7 +662,7 @@ class Processor {
 
 	insertVideoPosters() {
 		if (this.options.posters) {
-			this.doc.querySelectorAll("video[src], video > source[src]").forEach(element => {
+			this.doc.querySelectorAll("video, video > source").forEach(element => {
 				let videoElement;
 				if (element.tagName == "VIDEO") {
 					videoElement = element;
