@@ -67,9 +67,7 @@
 	const Event = globalThis.Event;	
 	const FileReader = globalThis.FileReader;
 	const Blob = globalThis.Blob;
-	const console = globalThis.console;
 	const JSON = globalThis.JSON;
-	const warn = (console && console.warn && ((...args) => console.warn(...args))) || (() => { });
 
 	const observers = new Map();
 	const observedElements = new Map();
