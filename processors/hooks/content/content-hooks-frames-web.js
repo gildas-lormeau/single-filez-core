@@ -314,12 +314,7 @@
 
 	if (globalThis.FontFace) {
 		const FontFace = globalThis.FontFace;
-		let warningFontFaceDisplayed;
 		globalThis.FontFace = function () {
-			if (!warningFontFaceDisplayed) {
-				warn("SingleFileZ is hooking the FontFace constructor, document.fonts.delete and document.fonts.clear to handle dynamically loaded fonts.");
-				warningFontFaceDisplayed = true;
-			}
 			getDetailObject(...arguments).then(detail => dispatchEvent(new CustomEvent(NEW_FONT_FACE_EVENT, { detail })));
 			return new FontFace(...arguments);
 		};
@@ -341,12 +336,7 @@
 
 	if (globalThis.IntersectionObserver) {
 		const IntersectionObserver = globalThis.IntersectionObserver;
-		let warningIntersectionObserverDisplayed;
 		globalThis.IntersectionObserver = function () {
-			if (!warningIntersectionObserverDisplayed) {
-				warn("SingleFileZ is hooking the IntersectionObserver API to detect and load deferred images.");
-				warningIntersectionObserverDisplayed = true;
-			}
 			const intersectionObserver = new IntersectionObserver(...arguments);
 			const observeIntersection = IntersectionObserver.prototype.observe || intersectionObserver.observe;
 			const unobserveIntersection = IntersectionObserver.prototype.unobserve || intersectionObserver.unobserve;
