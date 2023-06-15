@@ -632,6 +632,9 @@ class Processor {
 		function hideNode(node) {
 			if (canHideNode(node)) {
 				node.style.setProperty("display", "none", "important");
+				node.removeAttribute("src");
+				node.removeAttribute("srcset");
+				node.removeAttribute("srcdoc");
 				Array.from(node.childNodes).forEach(removeNode);
 			}
 		}
