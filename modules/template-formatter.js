@@ -1908,7 +1908,7 @@ const EMOJIS = Object.keys(EMOJI_NAMES);
 export { formatFilename, evalTemplate };
 
 async function formatFilename(content, options, util) {
-	let filename = (await evalTemplate(options.filenameTemplate, options, content)) || "";
+	let filename = (await evalTemplate(options.filenameTemplate, options, util, content)) || "";
 	if (options.replaceEmojisInFilename) {
 		EMOJIS.forEach(emoji => filename = filename.replaceAll(emoji, " _" + EMOJI_NAMES[emoji] + "_ "));
 	}
