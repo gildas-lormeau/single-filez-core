@@ -641,8 +641,8 @@ class Processor {
 
 		function canHideNode(node) {
 			if (node.nodeType == 1) {
-				const tagName = node.tagName && node.tagName.toLowerCase();
-				return (tagName != "svg" && tagName != "style" && tagName != "link");
+				const tagName = node.tagName && node.tagName.toUpperCase();
+				return tagName != "SVG" && tagName != "STYLE" && tagName != "LINK";
 			}
 		}
 	}
@@ -651,7 +651,7 @@ class Processor {
 		if (this.options.posters) {
 			this.doc.querySelectorAll("video, video > source").forEach(element => {
 				let videoElement;
-				if (element.tagName == "VIDEO") {
+				if (element.tagName.toUpperCase() == "VIDEO") {
 					videoElement = element;
 				} else {
 					videoElement = element.parentElement;
@@ -926,7 +926,7 @@ class Processor {
 	resolveHrefs() {
 		this.doc.querySelectorAll("a[href], area[href], link[href]").forEach(element => {
 			const href = element.getAttribute("href").trim();
-			if (element.tagName == "LINK" && element.rel.includes("stylesheet")) {
+			if (element.tagName.toUpperCase() == "LINK" && element.rel.includes("stylesheet")) {
 				if (this.options.saveOriginalURLs && !isDataURL(href)) {
 					element.setAttribute("data-sf-original-href", href);
 				}
@@ -956,7 +956,7 @@ class Processor {
 	async insertMissingVideoPosters() {
 		await Promise.all(Array.from(this.doc.querySelectorAll("video[src], video > source[src]")).map(async element => {
 			let videoElement;
-			if (element.tagName == "VIDEO") {
+			if (element.tagName.toUpperCase() == "VIDEO") {
 				videoElement = element;
 			} else {
 				videoElement = element.parentElement;
@@ -1026,7 +1026,7 @@ class Processor {
 				mediaText,
 				scoped
 			};
-			if (element.tagName == "LINK") {
+			if (element.tagName.toUpperCase() == "LINK") {
 				element.removeAttribute("integrity");
 				if (element.charset) {
 					options.charset = element.charset;
@@ -1051,13 +1051,13 @@ class Processor {
 
 		async function getStylesheet(stylesheetInfo, element, baseURI, options, workStylesheet, resources, stylesheets) {
 			if (options.blockStylesheets) {
-				if (element.tagName == "LINK") {
+				if (element.tagName.toUpperCase() == "LINK") {
 					element.href = util.EMPTY_RESOURCE;
 				} else {
 					element.textContent = "";
 				}
 			} else {
-				if (element.tagName == "LINK") {
+				if (element.tagName.toUpperCase() == "LINK") {
 					await ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, element.href, baseURI, options, workStylesheet, resources, stylesheets);
 				} else {
 					stylesheets.set({ element }, stylesheetInfo);
@@ -1072,7 +1072,7 @@ class Processor {
 		if (!this.options.saveRawPage) {
 			const frameElements = Array.from(this.doc.querySelectorAll("iframe, frame, object[type=\"text/html\"][data]"));
 			await Promise.all(frameElements.map(async frameElement => {
-				if (frameElement.tagName == "OBJECT") {
+				if (frameElement.tagName.toUpperCase() == "OBJECT") {
 					frameElement.setAttribute("data", "data:text/html,");
 				} else {
 					const src = frameElement.getAttribute("src");
@@ -1300,7 +1300,7 @@ class Processor {
 							const pageData = await frameData.runner.getPageData();
 							frameElement.removeAttribute(util.WIN_ID_ATTRIBUTE_NAME);
 							const name = "frames/" + this.resources.frames.size + "/";
-							if (frameElement.tagName == "OBJECT") {
+							if (frameElement.tagName.toUpperCase() == "OBJECT") {
 								frameElement.setAttribute("data", name + "index.html");
 							} else {
 								frameElement.setAttribute("src", name + "index.html");
@@ -1331,7 +1331,7 @@ class Processor {
 		}
 		for (const [key, stylesheetInfo] of this.stylesheets) {
 			if (key.element) {
-				if (key.element.tagName == "LINK") {
+				if (key.element.tagName.toUpperCase() == "LINK") {
 					const linkElement = key.element;
 					const name = "stylesheet_" + this.resources.stylesheets.size + ".css";
 					linkElement.setAttribute("href", name);

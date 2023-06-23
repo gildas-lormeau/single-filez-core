@@ -189,7 +189,7 @@ function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map
 				computedStyle = getComputedStyle(win, element);
 				if (element instanceof win.HTMLElement) {
 					if (options.removeHiddenElements) {
-						elementKept = ((ascendantHidden || element.closest("html > head")) && KEPT_TAG_NAMES.includes(element.tagName)) || element.closest("details");
+						elementKept = ((ascendantHidden || element.closest("html > head")) && KEPT_TAG_NAMES.includes(element.tagName.toUpperCase())) || element.closest("details");
 						if (!elementKept) {
 							elementHidden = ascendantHidden || testHiddenElement(element, computedStyle);
 							if (elementHidden) {
@@ -251,7 +251,8 @@ function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map
 }
 
 function getResourcesInfo(win, doc, element, options, data, elementHidden) {
-	if (element.tagName == "CANVAS") {
+	const tagName = element.tagName && element.tagName.toUpperCase();
+	if (tagName == "CANVAS") {
 		try {
 			data.canvases.push({ dataURI: element.toDataURL("image/png", "") });
 			element.setAttribute(CANVAS_ATTRIBUTE_NAME, data.canvases.length - 1);
@@ -260,7 +261,7 @@ function getResourcesInfo(win, doc, element, options, data, elementHidden) {
 			// ignored
 		}
 	}
-	if (element.tagName == "IMG") {
+	if (tagName == "IMG") {
 		const imageData = {
 			currentSrc: elementHidden ?
 				EMPTY_RESOURCE :
@@ -271,7 +272,7 @@ function getResourcesInfo(win, doc, element, options, data, elementHidden) {
 		data.markedElements.push(element);
 		element.removeAttribute(LAZY_SRC_ATTRIBUTE_NAME);
 	}
-	if (element.tagName == "VIDEO") {
+	if (tagName == "VIDEO") {
 		const src = element.currentSrc;
 		if (src && !src.startsWith("blob:") && !src.startsWith("data:")) {
 			const computedStyle = getComputedStyle(win, element.parentNode);
@@ -301,13 +302,13 @@ function getResourcesInfo(win, doc, element, options, data, elementHidden) {
 			}
 		}
 	}
-	if (element.tagName == "IFRAME") {
+	if (tagName == "IFRAME") {
 		if (elementHidden && options.removeHiddenElements) {
 			element.setAttribute(HIDDEN_FRAME_ATTRIBUTE_NAME, "");
 			data.markedElements.push(element);
 		}
 	}
-	if (element.tagName == "INPUT") {
+	if (tagName == "INPUT") {
 		if (element.type != "password") {
 			element.setAttribute(INPUT_VALUE_ATTRIBUTE_NAME, element.value);
 			data.markedElements.push(element);
@@ -317,11 +318,11 @@ function getResourcesInfo(win, doc, element, options, data, elementHidden) {
 			data.markedElements.push(element);
 		}
 	}
-	if (element.tagName == "TEXTAREA") {
+	if (tagName == "TEXTAREA") {
 		element.setAttribute(INPUT_VALUE_ATTRIBUTE_NAME, element.value);
 		data.markedElements.push(element);
 	}
-	if (element.tagName == "SELECT") {
+	if (tagName == "SELECT") {
 		element.querySelectorAll("option").forEach(option => {
 			if (option.selected) {
 				option.setAttribute(INPUT_VALUE_ATTRIBUTE_NAME, "");
@@ -329,7 +330,7 @@ function getResourcesInfo(win, doc, element, options, data, elementHidden) {
 			}
 		});
 	}
-	if (element.tagName == "SCRIPT") {
+	if (tagName == "SCRIPT") {
 		if (element.async && element.getAttribute("async") != "" && element.getAttribute("async") != "async") {
 			element.setAttribute(ASYNC_SCRIPT_ATTRIBUTE_NAME, "");
 			data.markedElements.push(element);
