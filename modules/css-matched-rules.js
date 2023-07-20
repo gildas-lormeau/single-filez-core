@@ -174,6 +174,10 @@ function getMatchedElementsSelector(doc, selectorInfo, styles, matchedElementsCa
 }
 
 function getFilteredSelector(selector, selectorText) {
+	const namespaceSeparatorIndex = selectorText.lastIndexOf("|");
+	if (namespaceSeparatorIndex > -1) {
+		return selectorText.substring(namespaceSeparatorIndex + 1);
+	}
 	const removedSelectors = [];
 	selector = { data: cssTree.parse(cssTree.generate(selector.data), { context: "selector" }) };
 	filterPseudoClasses(selector);
