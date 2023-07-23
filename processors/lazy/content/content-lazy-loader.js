@@ -78,7 +78,6 @@ async function process(options) {
 				return triggerLazyLoading(options);
 			}
 		}
-
 	}
 }
 
@@ -99,8 +98,8 @@ function triggerLazyLoading(options) {
 						mutation.target.setAttribute(helper.LAZY_SRC_ATTRIBUTE_NAME, mutation.target.src);
 						mutation.target.addEventListener("load", onResourceLoad);
 					}
-					if (mutation.attributeName == "src" || 
-						mutation.attributeName == "srcset" || (mutation.target.tagName && mutation.target.tagName.toUpperCase() == "SOURCE")) {
+					if (mutation.attributeName == "src" || mutation.attributeName == "srcset" || 
+						(mutation.target.tagName && mutation.target.tagName.toUpperCase() == "SOURCE")) {
 						return !mutation.target.classList || !mutation.target.classList.contains(helper.SINGLE_FILE_UI_ELEMENT_CLASS);
 					}
 				});
