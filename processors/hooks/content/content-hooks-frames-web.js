@@ -64,7 +64,7 @@
 	const screen = globalThis.screen;
 	const Element = globalThis.Element;
 	const UIEvent = globalThis.UIEvent;
-	const Event = globalThis.Event;	
+	const Event = globalThis.Event;
 	const FileReader = globalThis.FileReader;
 	const Blob = globalThis.Blob;
 	const JSON = globalThis.JSON;
