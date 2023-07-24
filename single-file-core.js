@@ -472,10 +472,12 @@ class Processor {
 				}
 			}
 			const infobarContent = (this.options.infobarContent || "").replace(/\\n/g, "\n").replace(/\\t/g, "\t");
-			const commentNode = this.doc.createComment("\n " + util.COMMENT_HEADER +
+			const commentNode = this.doc.createComment(
+				"\n " + util.COMMENT_HEADER +
 				" \n url: " + infobarURL +
 				(this.options.removeSavedDate ? " " : " \n saved date: " + infobarSaveDate) +
-				(infobarContent ? " \n info: " + infobarContent : "") + "\n");
+				(infobarContent ? " \n info: " + infobarContent : "") + "\n"
+			);
 			this.doc.documentElement.insertBefore(commentNode, this.doc.documentElement.firstChild);
 		}
 		if (this.options.insertCanonicalLink && this.options.saveUrl.match(HTTP_URI_PREFIX)) {
@@ -755,7 +757,10 @@ class Processor {
 		objectElements.forEach(element => element.remove());
 		const replacedAttributeValue = this.doc.querySelectorAll("link[rel~=preconnect], link[rel~=prerender], link[rel~=dns-prefetch], link[rel~=preload], link[rel~=manifest], link[rel~=prefetch]");
 		replacedAttributeValue.forEach(element => {
-			const relValue = element.getAttribute("rel").replace(/(preconnect|prerender|dns-prefetch|preload|prefetch|manifest)/g, "").trim();
+			const relValue = element
+				.getAttribute("rel")
+				.replace(/(preconnect|prerender|dns-prefetch|preload|prefetch|manifest)/g, "")
+				.trim();
 			if (relValue.length) {
 				element.setAttribute("rel", relValue);
 			} else {
@@ -1134,7 +1139,7 @@ class Processor {
 		}
 
 		function processElement(element) {
-			const shadowRootElements = Array.from((element.querySelectorAll("[" + util.SHADOW_ROOT_ATTRIBUTE_NAME + "]")));
+			const shadowRootElements = Array.from(element.querySelectorAll("[" + util.SHADOW_ROOT_ATTRIBUTE_NAME + "]"));
 			shadowRootElements.forEach(element => {
 				const attributeValue = element.getAttribute(util.SHADOW_ROOT_ATTRIBUTE_NAME);
 				if (attributeValue) {
