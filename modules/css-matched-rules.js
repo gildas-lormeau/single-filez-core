@@ -115,7 +115,7 @@ function getMatchedElementsRules(doc, cssRules, mediaInfo, sheetIndex, styles, m
 				const selectors = ruleData.prelude.children.toArray();
 				const selectorsText = ruleData.prelude.children.toArray().map(selector => cssTree.generate(selector));
 				const ruleInfo = { ruleData, mediaInfo, ruleIndex, sheetIndex, matchedSelectors: new Set(), declarations: new Set(), selectors, selectorsText };
-				if (!invalidSelector(selectorsText.join(","), workStylesheet)) {
+				if (!invalidSelector(selectorsText.join(","), workStylesheet) || selectorsText.find(selectorText => selectorText.includes("|"))) {
 					for (let selector = ruleData.prelude.children.head, selectorIndex = 0; selector; selector = selector.next, selectorIndex++) {
 						const selectorText = selectorsText[selectorIndex];
 						const selectorInfo = { selector, selectorText, ruleInfo };
