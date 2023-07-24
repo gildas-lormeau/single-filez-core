@@ -29,7 +29,8 @@ import {
 	ON_AFTER_CAPTURE_EVENT_NAME,
 	initUserScriptHandler,
 	preProcessDoc,
-	postProcessDoc
+	postProcessDoc,
+	getShadowRoot
 } from "./single-file-helper.js";
 
 const processors = { frameTree };
@@ -41,7 +42,8 @@ const helper = {
 	postProcessDoc,
 	serialize(doc, compressHTML) {
 		return serializer.process(doc, compressHTML);
-	}
+	},
+	getShadowRoot
 };
 
 initUserScriptHandler();
