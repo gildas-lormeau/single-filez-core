@@ -1489,6 +1489,40 @@ class ProcessorHelper {
 		}
 	}
 
+	static replacePseudoClassDefined(stylesheet) {
+		const removedSelectors = [];
+		if (stylesheet.children) {
+			for (let cssRule = stylesheet.children.head; cssRule; cssRule = cssRule.next) {
+				const ruleData = cssRule.data;
+				if (ruleData.type == "Rule" && ruleData.prelude && ruleData.prelude.children) {
+					for (let selector = ruleData.prelude.children.head; selector; selector = selector.next) {
+						replacePseudoDefinedSelector(selector, ruleData.prelude);
+					}
+				}
+			}
+		}
+		if (removedSelectors.length) {
+			removedSelectors.forEach(({ parentSelector, selector }) => {
+				if (parentSelector.data.children.size == 0 || !selector.prev || selector.prev.data.type == "Combinator" || selector.prev.data.type == "WhiteSpace") {
+					parentSelector.data.children.replace(selector, cssTree.parse("*", { context: "selector" }).children.head);
+				} else {
+					parentSelector.data.children.remove(selector);
+				}
+			});
+		}
+
+		function replacePseudoDefinedSelector(selector, parentSelector) {
+			if (selector.data.children) {
+				for (let childSelector = selector.data.children.head; childSelector; childSelector = childSelector.next) {
+					replacePseudoDefinedSelector(childSelector, selector);
+				}
+			}
+			if (selector.data.type == "PseudoClassSelector" && selector.data.name == "defined") {
+				removedSelectors.push({ parentSelector, selector });
+			}
+		}
+	}
+
 	static async resolveImportURLs(stylesheetInfo, baseURI, options, workStylesheet, resources, stylesheets) {
 		const stylesheet = stylesheetInfo.stylesheet;
 		const scoped = stylesheetInfo.scoped;
@@ -1947,6 +1981,7 @@ function generateStylesheetContent(stylesheet, options) {
 	if (options.compressCSS) {
 		ProcessorHelper.removeSingleLineCssComments(stylesheet);
 	}
+	ProcessorHelper.replacePseudoClassDefined(stylesheet);
 	let stylesheetContent = cssTree.generate(stylesheet);
 	if (options.compressCSS) {
 		stylesheetContent = util.compressCSS(stylesheetContent);
