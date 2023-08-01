@@ -88,7 +88,7 @@ async function process(pageData, options) {
 		if (options.insertTextBody) {
 			const doc = (new DOMParser()).parseFromString(pageData.content, "text/html");
 			doc.body.querySelectorAll("style, script, noscript").forEach(element => element.remove());
-			textBody = doc.body.innerText;
+			let textBody = doc.body.innerText;
 			doc.body.querySelectorAll("single-file-note").forEach(node => textBody += "\n" + node.shadowRoot.querySelector("textarea").value);
 			textBody = textBody.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim();
 			pageContent += "\n<main hidden>\n" + textBody + "\n</main>\n";
