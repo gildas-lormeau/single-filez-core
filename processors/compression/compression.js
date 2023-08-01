@@ -89,7 +89,13 @@ async function process(pageData, options) {
 			const doc = (new DOMParser()).parseFromString(pageData.content, "text/html");
 			doc.body.querySelectorAll("style, script, noscript").forEach(element => element.remove());
 			let textBody = doc.body.innerText;
-			doc.body.querySelectorAll("single-file-note").forEach(node => textBody += "\n" + node.shadowRoot.querySelector("textarea").value);
+			doc.body.querySelectorAll("single-file-note").forEach(node => {
+				const template = node.querySelector("template");
+				if (template) {
+					const docTemplate = (new DOMParser()).parseFromString(template.innerHTML, "text/html");
+					textBody += "\n" + docTemplate.body.querySelector("textarea").value;
+				}
+			});
 			textBody = textBody.replace(/</g, "&lt;").replace(/>/g, "&gt;").trim();
 			pageContent += "\n<main hidden>\n" + textBody + "\n</main>\n";
 		}
