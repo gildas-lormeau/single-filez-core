@@ -217,7 +217,7 @@ function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map
 					}
 				}
 			}
-			getResourcesInfo(win, doc, element, options, data, elementHidden);
+			getResourcesInfo(win, doc, element, options, data, elementHidden, computedStyle);
 			const shadowRoot = !(element instanceof win.SVGElement) && getShadowRoot(element);
 			if (shadowRoot && !element.classList.contains(SINGLE_FILE_UI_ELEMENT_CLASS)) {
 				const shadowRootInfo = {};
@@ -234,7 +234,7 @@ function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map
 						} else if (shadowRoot.adoptedStyleSheets.length === undefined) {
 							const listener = event => shadowRootInfo.adoptedStyleSheets = event.detail.adoptedStyleSheets;
 							element.addEventListener(GET_ADOPTED_STYLESHEETS_RESPONSE_EVENT, listener);
-							element.dispatchEvent(new CustomEvent(GET_ADOPTED_STYLESHEETS_REQUEST_EVENT, { options: { bubbles: true, composed: true }}));
+							element.dispatchEvent(new CustomEvent(GET_ADOPTED_STYLESHEETS_REQUEST_EVENT, { options: { bubbles: true, composed: true } }));
 							element.removeEventListener(GET_ADOPTED_STYLESHEETS_RESPONSE_EVENT, listener);
 						}
 					}
@@ -259,11 +259,14 @@ function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map
 	return data;
 }
 
-function getResourcesInfo(win, doc, element, options, data, elementHidden) {
+function getResourcesInfo(win, doc, element, options, data, elementHidden, computedStyle) {
 	const tagName = element.tagName && element.tagName.toUpperCase();
 	if (tagName == "CANVAS") {
 		try {
-			data.canvases.push({ dataURI: element.toDataURL("image/png", "") });
+			data.canvases.push({
+				dataURI: element.toDataURL("image/png", ""),
+				backgroundColor: computedStyle.getPropertyValue("background-color")
+			});
 			element.setAttribute(CANVAS_ATTRIBUTE_NAME, data.canvases.length - 1);
 			data.markedElements.push(element);
 		} catch (error) {
