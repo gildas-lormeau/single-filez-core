@@ -1152,13 +1152,6 @@ class Processor {
 					if (shadowRootData) {
 						const templateElement = doc.createElement("template");
 						templateElement.setAttribute(SHADOWROOT_ATTRIBUTE_NAME, shadowRootData.mode);
-						if (shadowRootData.adoptedStyleSheets) {
-							shadowRootData.adoptedStyleSheets.forEach(stylesheetContent => {
-								const styleElement = doc.createElement("style");
-								styleElement.textContent = stylesheetContent;
-								templateElement.appendChild(styleElement);
-							});
-						}
 						const shadowDoc = util.parseDocContent(shadowRootData.content);
 						if (shadowDoc.head) {
 							const metaCharset = shadowDoc.head.querySelector("meta[charset]");
@@ -1175,6 +1168,13 @@ class Processor {
 							element.insertBefore(templateElement, element.firstChild);
 						} else {
 							element.appendChild(templateElement);
+						}
+						if (shadowRootData.adoptedStyleSheets) {
+							shadowRootData.adoptedStyleSheets.forEach(stylesheetContent => {
+								const styleElement = doc.createElement("style");
+								styleElement.textContent = stylesheetContent;
+								templateElement.appendChild(styleElement);
+							});
 						}
 					}
 				}
