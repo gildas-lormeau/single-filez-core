@@ -21,9 +21,9 @@
  *   Source.
  */
 
-import * as serializer from "single-filez-core/modules/html-serializer.js";
-import * as infobar from "single-filez-core/common/infobar.js";
-import { getInstance } from "single-filez-core/single-file-util.js";
+import * as serializer from "./modules/html-serializer.js";
+import * as infobar from "./common/infobar.js";
+import { getInstance } from "./single-file-util.js";
 
 const util = getInstance();
 const helper = {
