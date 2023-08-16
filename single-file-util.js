@@ -44,7 +44,6 @@ const CONTENT_TYPE_EXTENSIONS = {
 const URL = globalThis.URL;
 const DOMParser = globalThis.DOMParser;
 const Blob = globalThis.Blob;
-const FileReader = globalThis.FileReader;
 const fetch = (url, options) => globalThis.fetch(url, options);
 const crypto = globalThis.crypto;
 const TextDecoder = globalThis.TextDecoder;
@@ -175,6 +174,9 @@ function getInstance(utilOptions) {
 		},
 		removeQuotes(string) {
 			return helper.removeQuotes(string);
+		},
+		appendInfobar(doc, options) {
+			return helper.appendInfobar(doc, options);
 		},
 		ON_BEFORE_CAPTURE_EVENT_NAME: helper.ON_BEFORE_CAPTURE_EVENT_NAME,
 		ON_AFTER_CAPTURE_EVENT_NAME: helper.ON_AFTER_CAPTURE_EVENT_NAME,

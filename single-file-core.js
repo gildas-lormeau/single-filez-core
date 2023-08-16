@@ -480,6 +480,18 @@ class Processor {
 			);
 			this.doc.documentElement.insertBefore(commentNode, this.doc.documentElement.firstChild);
 		}
+		if (this.options.includeInfobar) {
+			util.appendInfobar(this.doc, this.options);
+		}
+		if (this.doc.querySelector("template[" + SHADOWROOT_ATTRIBUTE_NAME + "]") || (this.options.shadowRoots && this.options.shadowRoots.length)) {
+			if (this.options.blockScripts) {
+				this.doc.querySelectorAll("script[" + SCRIPT_TEMPLATE_SHADOW_ROOT + "]").forEach(element => element.remove());
+			}
+			const scriptElement = this.doc.createElement("script");
+			scriptElement.setAttribute(SCRIPT_TEMPLATE_SHADOW_ROOT, "");
+			scriptElement.textContent = `(()=>{document.currentScript.remove();processNode(document);function processNode(node){node.querySelectorAll("template[${SHADOWROOT_ATTRIBUTE_NAME}]").forEach(element=>{let shadowRoot = element.parentElement.shadowRoot;if (!shadowRoot) {try {shadowRoot=element.parentElement.attachShadow({mode:element.getAttribute("${SHADOWROOT_ATTRIBUTE_NAME}")});shadowRoot.innerHTML=element.innerHTML;element.remove()} catch (error) {} if (shadowRoot) {processNode(shadowRoot)}}})}})()`;
+			this.doc.body.appendChild(scriptElement);
+		}
 		if (this.options.insertCanonicalLink && this.options.saveUrl.match(HTTP_URI_PREFIX)) {
 			let canonicalLink = this.doc.querySelector("link[rel=canonical]");
 			if (!canonicalLink) {
@@ -1134,13 +1146,6 @@ class Processor {
 		const options = this.options;
 		if (options.shadowRoots && options.shadowRoots.length) {
 			processElement(this.doc);
-			if (options.blockScripts) {
-				this.doc.querySelectorAll("script[" + SCRIPT_TEMPLATE_SHADOW_ROOT + "]").forEach(element => element.remove());
-			}
-			const scriptElement = doc.createElement("script");
-			scriptElement.setAttribute(SCRIPT_TEMPLATE_SHADOW_ROOT, "");
-			scriptElement.textContent = `(()=>{document.currentScript.remove();processNode(document);function processNode(node){node.querySelectorAll("template[${SHADOWROOT_ATTRIBUTE_NAME}]").forEach(element=>{let shadowRoot = element.parentElement.shadowRoot;if (!shadowRoot) {try {shadowRoot=element.parentElement.attachShadow({mode:element.getAttribute("${SHADOWROOT_ATTRIBUTE_NAME}")});shadowRoot.innerHTML=element.innerHTML;element.remove()} catch (error) {} if (shadowRoot) {processNode(shadowRoot)}}})}})()`;
-			doc.body.appendChild(scriptElement);
 		}
 
 		function processElement(element) {
