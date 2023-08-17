@@ -63,6 +63,7 @@ const FONT_WEIGHTS = {
 };
 const COMMENT_HEADER = "Page saved with SingleFileZ";
 const SINGLE_FILE_UI_ELEMENT_CLASS = "single-file-ui-element";
+const INFOBAR_TAGNAME = infobar.INFOBAR_TAGNAME;
 const EMPTY_RESOURCE = "data:,";
 const addEventListener = (type, listener, options) => globalThis.addEventListener(type, listener, options);
 const dispatchEvent = event => { try { globalThis.dispatchEvent(event); } catch (error) {  /* ignored */ } };
@@ -101,7 +102,8 @@ export {
 	ASYNC_SCRIPT_ATTRIBUTE_NAME,
 	COMMENT_HEADER,
 	SINGLE_FILE_UI_ELEMENT_CLASS,
-	EMPTY_RESOURCE
+	EMPTY_RESOURCE,
+	INFOBAR_TAGNAME
 };
 
 function initUserScriptHandler() {
