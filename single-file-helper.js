@@ -180,7 +180,8 @@ function preProcessDoc(doc, win, options) {
 		shadowRoots: elementsInfo.shadowRoots,
 		referrer: doc.referrer,
 		markedElements: elementsInfo.markedElements,
-		invalidElements
+		invalidElements,
+		scrollPosition: { x: win.scrollX, y: win.scrollY }
 	};
 }
 
