@@ -178,6 +178,7 @@ class Runner {
 			this.options.usedFonts = docData.usedFonts;
 			this.options.shadowRoots = docData.shadowRoots;
 			this.options.referrer = docData.referrer;
+			this.options.adoptedStyleSheets = docData.adoptedStyleSheets;
 			this.markedElements = docData.markedElements;
 			this.invalidElements = docData.invalidElements;
 		}
@@ -619,6 +620,11 @@ class Processor {
 					}
 				}
 			});
+		}
+		if (this.options.adoptedStyleSheets.length) {
+			const styleElement = this.doc.createElement("style");
+			styleElement.textContent = this.options.adoptedStyleSheets.join("\n");
+			this.doc.body.appendChild(styleElement);
 		}
 	}
 
@@ -1152,6 +1158,7 @@ class Processor {
 				options.shadowRoots = frameData.shadowRoots;
 				options.scrollPosition = frameData.scrollPosition;
 				options.scrolling = frameData.scrolling;
+				options.adoptedStyleSheets = frameData.adoptedStyleSheets;
 				frameData.runner = new Runner(options);
 				frameData.frameElement = frameElement;
 				await frameData.runner.loadPage();
