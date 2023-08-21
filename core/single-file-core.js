@@ -31,6 +31,10 @@ const JSON = globalThis.JSON;
 
 let util, cssTree;
 
+export {
+	getClass
+};
+
 function getClass(...args) {
 	[util, cssTree] = args;
 	return SingleFileClass;
@@ -2120,7 +2124,3 @@ class Stats {
 		}
 	}
 }
-
-export {
-	getClass
-};
