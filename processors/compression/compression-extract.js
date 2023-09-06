@@ -65,7 +65,7 @@ async function extract(content, { password, prompt = () => { }, shadowRootScript
 	const options = { password };
 	await Promise.all(entries.map(async entry => {
 		let dataWriter, content, textContent, name, blob;
-		if (!options.password && entry.bitFlag.encrypted) {
+		if (!options.password && entry.encrypted) {
 			options.password = prompt("Please enter the password to view the page");
 		}
 		name = entry.filename.match(/^([0-9_]+\/)?(.*)$/)[2];
