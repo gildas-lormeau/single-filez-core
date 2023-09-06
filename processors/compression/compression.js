@@ -102,7 +102,7 @@ async function process(pageData, options) {
 		pageContent += "</body><xmp><![CDATA[";
 		await writeData(blobWriter.writable, (new TextEncoder()).encode(pageContent));
 	}
-	const zipWriter = new ZipWriter(blobWriter);
+	const zipWriter = new ZipWriter(blobWriter, { bufferedWrite: true, keepOrder: false });
 	pageData.url = options.url;
 	pageData.archiveTime = (new Date()).toISOString();
 	await addPageResources(zipWriter, pageData, { password: options.password }, options.createRootDirectory ? String(Date.now()) + "_" + (options.tabId || 0) + "/" : "", options.url);
