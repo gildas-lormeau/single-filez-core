@@ -44,7 +44,7 @@
 	const FETCH_ACK_EVENT = "single-filez-ack-fetch";
 	const FETCH_RESPONSE_EVENT = "single-filez-response-fetch";
 	const GET_ADOPTED_STYLESHEETS_REQUEST_EVENT = "single-filez-request-get-adopted-stylesheets";
-	const UNREGISTER_GET_ADOPTED_STYLESHEETS_REQUEST_EVENT = "single-file-unregister-request-get-adopted-stylesheets";
+	const UNREGISTER_GET_ADOPTED_STYLESHEETS_REQUEST_EVENT = "single-filez-unregister-request-get-adopted-stylesheets";
 	const GET_ADOPTED_STYLESHEETS_RESPONSE_EVENT = "single-filez-response-get-adopted-stylesheets";
 	const NEW_FONT_FACE_EVENT = "single-filez-new-font-face";
 	const DELETE_FONT_EVENT = "single-filez-delete-font";
