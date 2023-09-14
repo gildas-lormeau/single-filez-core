@@ -45,7 +45,7 @@ class SingleFileClass {
 		this.options = options;
 	}
 	async run() {
-		const waitForUserScript = globalThis._singleFileZ_waitForUserScript;
+		const waitForUserScript = globalThis[util.WAIT_FOR_USERSCRIPT_PROPERTY_NAME];
 		if (this.options.userScriptEnabled && waitForUserScript) {
 			await waitForUserScript(util.ON_BEFORE_CAPTURE_EVENT_NAME);
 		}
