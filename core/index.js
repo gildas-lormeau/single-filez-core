@@ -558,7 +558,7 @@ class Processor {
 		const viewport = this.doc.head.querySelector("meta[name=viewport]");
 		const pageData = {
 			stats: this.stats.data,
-			title: this.options.title || (this.baseURI && matchTitle ? matchTitle[1] : (url.hostname ? url.hostname : "")),
+			title: this.options.title || (this.baseURI && matchTitle ? matchTitle[1] : url.hostname ? url.hostname : ""),
 			filename,
 			content,
 			resources,
@@ -1188,6 +1188,13 @@ class Processor {
 					if (shadowRootData) {
 						const templateElement = doc.createElement("template");
 						templateElement.setAttribute(SHADOWROOT_ATTRIBUTE_NAME, shadowRootData.mode);
+						if (shadowRootData.adoptedStyleSheets && shadowRootData.adoptedStyleSheets.length) {
+							shadowRootData.adoptedStyleSheets.forEach(stylesheetContent => {
+								const styleElement = doc.createElement("style");
+								styleElement.textContent = stylesheetContent;
+								templateElement.appendChild(styleElement);
+							});
+						}
 						const shadowDoc = util.parseDocContent(shadowRootData.content);
 						if (shadowDoc.head) {
 							const metaCharset = shadowDoc.head.querySelector("meta[charset]");
@@ -1204,13 +1211,6 @@ class Processor {
 							element.insertBefore(templateElement, element.firstChild);
 						} else {
 							element.appendChild(templateElement);
-						}
-						if (shadowRootData.adoptedStyleSheets && shadowRootData.adoptedStyleSheets.length) {
-							shadowRootData.adoptedStyleSheets.forEach(stylesheetContent => {
-								const styleElement = doc.createElement("style");
-								styleElement.textContent = stylesheetContent;
-								templateElement.appendChild(styleElement);
-							});
 						}
 					}
 				}
@@ -1252,9 +1252,9 @@ class Processor {
 	async processPageResources() {
 		const processAttributeArgs = [
 			["link[href][rel*=\"icon\"]", "href", true],
-			["object[type=\"image/svg+xml\"], object[type=\"image/svg-xml\"], object[data*=\".svg\"], object[data*=\".pdf\"]", "data"],
+			["object[type=\"image/svg+xml\"], object[type=\"image/svg-xml\"], object[data*=\".svg\"]", "data"],
 			["img[src], input[src][type=image]", "src"],
-			["embed[src*=\".svg\"], embed[src*=\".pdf\"]", "src"],
+			["embed[src*=\".svg\"]", "src"],
 			["video[poster]", "poster"],
 			["*[background]", "background"],
 			["image", "xlink:href"],
@@ -1270,6 +1270,8 @@ class Processor {
 			ProcessorHelper.processXLinks(this.doc.querySelectorAll("use"), this.doc, this.baseURI, this.options, this.batchRequest),
 			ProcessorHelper.processSrcset(this.doc.querySelectorAll("img[srcset], source[srcset]"), this.baseURI, this.options, this.resources, this.batchRequest)
 		]);
+		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("object[data*=\".pdf\"]"), "data", this.baseURI, this.options, null, this.cssVariables, this.styles, this.batchRequest));
+		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("embed[src*=\".pdf\"]"), "src", this.baseURI, this.options, null, this.cssVariables, this.styles, this.batchRequest));
 		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("audio[src], audio > source[src]"), "src", this.baseURI, this.options, "audio", this.resources, this.batchRequest));
 		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("video[src], video > source[src]"), "src", this.baseURI, this.options, "video", this.resources, this.batchRequest));
 		await Promise.all(resourcePromises);

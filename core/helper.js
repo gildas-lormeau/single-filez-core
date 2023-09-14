@@ -23,8 +23,8 @@
 
 /* global globalThis, CustomEvent */
 
-import * as cssUnescape from "../vendor/css-unescape.js";
-import * as hooksFrames from "../processors/hooks/content/content-hooks-frames.js";
+import * as cssUnescape from "./../vendor/css-unescape.js";
+import * as hooksFrames from "./../processors/hooks/content/content-hooks-frames.js";
 import * as infobar from "./infobar.js";
 
 const ON_BEFORE_CAPTURE_EVENT_NAME = "single-filez-on-before-capture";

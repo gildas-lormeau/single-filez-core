@@ -194,18 +194,6 @@ function getFilteredSelector(selector, selectorText) {
 	}
 	return selectorText;
 
-	function filterNamespace(selector) {
-		if (selector.data.children) {
-			for (let childSelector = selector.data.children.head; childSelector; childSelector = childSelector.next) {
-				filterNamespace(childSelector);
-			}
-		}
-		if (selector.data.type == "TypeSelector" && selector.data.name.includes("|")) {
-			namespaceFound = true;
-			selector.data.name = selector.data.name.substring(selector.data.name.lastIndexOf("|") + 1);
-		}
-	}
-
 	function filterPseudoClasses(selector, parentSelector) {
 		if (selector.data.children) {
 			for (let childSelector = selector.data.children.head; childSelector; childSelector = childSelector.next) {
@@ -215,6 +203,18 @@ function getFilteredSelector(selector, selectorText) {
 		if ((selector.data.type == "PseudoClassSelector") ||
 			(selector.data.type == "PseudoElementSelector" && (testVendorPseudo(selector) || IGNORED_PSEUDO_ELEMENTS.includes(selector.data.name)))) {
 			removedSelectors.push({ parentSelector, selector });
+		}
+	}
+
+	function filterNamespace(selector) {
+		if (selector.data.children) {
+			for (let childSelector = selector.data.children.head; childSelector; childSelector = childSelector.next) {
+				filterNamespace(childSelector);
+			}
+		}
+		if (selector.data.type == "TypeSelector" && selector.data.name.includes("|")) {
+			namespaceFound = true;
+			selector.data.name = selector.data.name.substring(selector.data.name.lastIndexOf("|") + 1);
 		}
 	}
 
