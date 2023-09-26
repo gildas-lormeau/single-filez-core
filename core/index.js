@@ -1270,11 +1270,11 @@ class Processor {
 			ProcessorHelper.processXLinks(this.doc.querySelectorAll("use"), this.doc, this.baseURI, this.options, this.batchRequest),
 			ProcessorHelper.processSrcset(this.doc.querySelectorAll("img[srcset], source[srcset]"), this.baseURI, this.options, this.resources, this.batchRequest)
 		]);
-		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("object[data*=\".pdf\"]"), "data", this.baseURI, this.options, null, this.cssVariables, this.styles, this.batchRequest));
-		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("embed[src*=\".pdf\"]"), "src", this.baseURI, this.options, null, this.cssVariables, this.styles, this.batchRequest));
+		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("object[data*=\".pdf\"]"), "data", this.baseURI, this.options, null, this.resources, this.batchRequest));
+		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("embed[src*=\".pdf\"]"), "src", this.baseURI, this.options, null, this.resources, this.batchRequest));
 		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("audio[src], audio > source[src]"), "src", this.baseURI, this.options, "audio", this.resources, this.batchRequest));
 		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("video[src], video > source[src]"), "src", this.baseURI, this.options, "video", this.resources, this.batchRequest));
-		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("model[src]"), "src", this.baseURI, this.options, null, this.cssVariables, this.styles, this.batchRequest));
+		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("model[src]"), "src", this.baseURI, this.options, null, this.resources, this.batchRequest));
 		await Promise.all(resourcePromises);
 		if (this.options.saveFavicon) {
 			ProcessorHelper.processShortcutIcons(this.doc);
