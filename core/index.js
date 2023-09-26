@@ -386,7 +386,7 @@ class BatchRequest {
 // Processor
 // ---------
 const PREFIX_DATA_URI_IMAGE_SVG = "data:image/svg+xml,";
-const SHADOWROOT_ATTRIBUTE_NAME = "shadowroot";
+const SHADOWROOT_ATTRIBUTE_NAME = "shadowrootmode";
 const SCRIPT_TEMPLATE_SHADOW_ROOT = "data-template-shadow-root";
 const UTF8_CHARSET = "utf-8";
 
