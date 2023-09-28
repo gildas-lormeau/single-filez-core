@@ -287,7 +287,7 @@ async function getContent() {
 			for (let index = 0; index < textContent.length; index++) {
 				const charCode = textContent.charCodeAt(index);
 				if (charCode > 255) {
-					zipData.push(characterMap.has(charCode) ? characterMap.get(charCode) : charCode);
+					zipData.push(characterMap.get(charCode));
 				} else {
 					zipData.push(charCode);
 				}
