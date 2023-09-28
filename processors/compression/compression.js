@@ -49,6 +49,13 @@ export {
 };
 
 async function process(pageData, options) {
+	let script;
+	if (options.zipScript) {
+		script = options.zipScript;
+	} else if (browser && browser.runtime && browser.runtime.getURL) {
+		configure({ workerScripts: { deflate: ["/lib/single-file-z-worker.js"] } });
+		script = await (await fetch(browser.runtime.getURL(SCRIPT_PATH))).text();
+	}
 	const zipDataWriter = new Uint8ArrayWriter();
 	zipDataWriter.init();
 	if (options.selfExtractingArchive) {
@@ -153,13 +160,6 @@ async function process(pageData, options) {
 				await arrayToBase64(substitutionsLF) + "," +
 				await arrayToBase64([startOffset]);
 			pageContent += "<sfz-extra-data>" + extraData + "</sfz-extra-data>";
-		}
-		let script = "";
-		if (options.zipScript) {
-			script += options.zipScript;
-		} else if (browser && browser.runtime && browser.runtime.getURL) {
-			configure({ workerScripts: { deflate: ["/lib/single-file-z-worker.js"] } });
-			script += await (await fetch(browser.runtime.getURL(SCRIPT_PATH))).text();
 		}
 		script += "document.currentScript.remove();globalThis.bootstrap=(()=>{let bootstrapStarted;return async content=>{if (bootstrapStarted) return bootstrapStarted;bootstrapStarted = (" +
 			extract.toString().replace(/\n|\t/g, "") + ")(content,{prompt}).then(({docContent}) => " +
