@@ -75,7 +75,7 @@ async function process(pageData, options) {
 		pageContent += "<ul style='line-height:20px;'>";
 		pageContent += "<li style='margin-bottom:10px'><strong>Chrome</strong>: Install <a href='https://chrome.google.com/webstore/detail/singlefilez/offkdfbbigofcgdokjemgjpdockaafjg'>SingleFileZ</a> and enable the option \"Allow access to file URLs\" in the details page of the extension (chrome://extensions/?id=offkdfbbigofcgdokjemgjpdockaafjg).</li>";
 		pageContent += "<li style='margin-bottom:10px'><strong>Microsoft Edge</strong>: Install <a href='https://microsoftedge.microsoft.com/addons/detail/singlefilez/gofneaifncimeglaecpnanbnmnpfjekk'>SingleFileZ</a> and enable the option \"Allow access to file URLs\" in the details page of the extension (edge://extensions/?id=gofneaifncimeglaecpnanbnmnpfjekk).</li>";
-		pageContent += "<li><strong>Safari</strong>: Select \"Disable Local File Restrictions\" in the \"Develop\" menu.</li></ul></div>";
+		pageContent += "<li><strong>Safari</strong>: Select \"Security > Disable Local File Restrictions\" in the \"Develop > Developer settings\" menu.</li></ul></div>";
 		if (options.insertTextBody) {
 			const doc = (new DOMParser()).parseFromString(pageData.content, "text/html");
 			doc.body.querySelectorAll("style, script, noscript").forEach(element => element.remove());
