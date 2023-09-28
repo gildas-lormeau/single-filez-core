@@ -110,23 +110,25 @@ async function process(pageData, options) {
 	if (options.selfExtractingArchive) {
 		const insertionsCRLF = [];
 		const substitutionsLF = [];
-		if (options.extractDataFromPage && !options.extractDataFromPageTags) {
-			const textContent = new TextDecoder().decode(data);
-			const matchEndTagXMP = textContent.match(/<\/\s*xmp>/i);
-			if (matchEndTagXMP) {
-				const matchEndTagComment = textContent.match(/-->/i);
-				if (matchEndTagComment) {
-					const matchTextAreaTagComment = textContent.match(/<\/\s*textarea>/i);
-					if (matchTextAreaTagComment) {
-						options.extractDataFromPage = false;
-						return process(pageData, options);
+		if (options.extractDataFromPage) {
+			if (!options.extractDataFromPageTags) {
+				const textContent = new TextDecoder().decode(data);
+				const matchEndTagXMP = textContent.match(/<\/\s*xmp>/i);
+				if (matchEndTagXMP) {
+					const matchEndTagComment = textContent.match(/-->/i);
+					if (matchEndTagComment) {
+						const matchTextAreaTagComment = textContent.match(/<\/\s*textarea>/i);
+						if (matchTextAreaTagComment) {
+							options.extractDataFromPage = false;
+							return process(pageData, options);
+						} else {
+							options.extractDataFromPageTags = ["<textarea>", "</textarea>"];
+							return process(pageData, options);
+						}
 					} else {
-						options.extractDataFromPageTags = ["<textarea>", "</textarea>"];
+						options.extractDataFromPageTags = ["<!--", "-->"];
 						return process(pageData, options);
 					}
-				} else {
-					options.extractDataFromPageTags = ["<!--", "-->"];
-					return process(pageData, options);
 				}
 			}
 			for (let index = 0; index < data.length; index++) {
