@@ -286,7 +286,11 @@ async function getContent() {
 			let { textContent } = dataNode;
 			for (let index = 0; index < textContent.length; index++) {
 				const charCode = textContent.charCodeAt(index);
-				zipData.push(characterMap.has(charCode) ? characterMap.get(charCode) : charCode);
+				if (charCode > 255) {
+					zipData.push(characterMap.has(charCode) ? characterMap.get(charCode) : charCode);
+				} else {
+					zipData.push(charCode);
+				}
 			}
 			const [insertionsCRLFData, substitutionsLFData, startOffsetData] = zipDataElement.textContent.split(",");
 			const insertionsCRLF = await base64ToUint32Array(insertionsCRLFData);
