@@ -151,7 +151,6 @@ async function process(pageData, options) {
 				await arrayToBase64(substitutionsLF) + "," +
 				await arrayToBase64([startOffset]);
 			pageContent += "<sfz-extra-data>" + extraData + "</sfz-extra-data>";
-
 		}
 		let script = "";
 		if (options.zipScript) {
