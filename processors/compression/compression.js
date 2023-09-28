@@ -129,13 +129,13 @@ async function process(pageData, options) {
 					return process(pageData, options);
 				}
 			}
-		}
-		for (let index = 0; index < data.length; index++) {
-			if (data[index] == 13) {
-				if (data[index + 1] == 10) {
-					insertionsCRLF.push(index - startOffset);
-				} else {
-					substitutionsLF.push(index - startOffset);
+			for (let index = 0; index < data.length; index++) {
+				if (data[index] == 13) {
+					if (data[index + 1] == 10) {
+						insertionsCRLF.push(index - startOffset);
+					} else {
+						substitutionsLF.push(index - startOffset);
+					}
 				}
 			}
 		}
