@@ -1074,7 +1074,7 @@ class Processor {
 				}
 				stylesheetInfo.url = element.href;
 			}
-			await processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, options, this.workStyleElement, this.resources);
+			await ProcessorHelper.processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, options, this.workStyleElement, this.resources);
 		}));
 		if (this.options.rootDocument) {
 			const newResources = Object.keys(this.options.updatedResources)
@@ -1087,27 +1087,9 @@ class Processor {
 					const element = this.doc.createElement("style");
 					this.doc.body.appendChild(element);
 					element.textContent = resource.content;
-					await processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, this.options, this.workStyleElement, this.resources);
+					await ProcessorHelper.processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, this.options, this.workStyleElement, this.resources);
 				}
 			}));
-		}
-
-		async function processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
-			if (options.blockStylesheets) {
-				if (element.tagName.toUpperCase() == "LINK") {
-					element.href = util.EMPTY_RESOURCE;
-				} else {
-					element.textContent = "";
-				}
-			} else {
-				if (element.tagName.toUpperCase() == "LINK") {
-					await ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, element.href, baseURI, options, workStyleElement, resources, stylesheets);
-				} else {
-					stylesheets.set({ element }, stylesheetInfo);
-					stylesheetInfo.stylesheet = cssTree.parse(element.textContent, { context: "stylesheet", parseCustomProperty: true });
-					await ProcessorHelper.resolveImportURLs(stylesheetInfo, baseURI, options, workStyleElement, resources, stylesheets);
-				}
-			}
 		}
 	}
 
@@ -1244,35 +1226,7 @@ class Processor {
 	}
 
 	async processPageResources() {
-		const processAttributeArgs = [
-			["link[href][rel*=\"icon\"]", "href", true],
-			["object[type=\"image/svg+xml\"], object[type=\"image/svg-xml\"], object[data*=\".svg\"]", "data"],
-			["img[src], input[src][type=image]", "src"],
-			["embed[src*=\".svg\"]", "src"],
-			["video[poster]", "poster"],
-			["*[background]", "background"],
-			["image", "xlink:href"],
-			["image", "href"]
-		];
-		if (this.options.blockImages) {
-			this.doc.querySelectorAll("svg").forEach(element => element.remove());
-		}
-		let resourcePromises = processAttributeArgs.map(([selector, attributeName, removeElementIfMissing]) =>
-			ProcessorHelper.processAttribute(this.doc.querySelectorAll(selector), attributeName, this.baseURI, this.options, "image", this.resources, this.batchRequest, removeElementIfMissing)
-		);
-		resourcePromises = resourcePromises.concat([
-			ProcessorHelper.processXLinks(this.doc.querySelectorAll("use"), this.doc, this.baseURI, this.options, this.batchRequest),
-			ProcessorHelper.processSrcset(this.doc.querySelectorAll("img[srcset], source[srcset]"), this.baseURI, this.options, this.resources, this.batchRequest)
-		]);
-		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("object[data*=\".pdf\"]"), "data", this.baseURI, this.options, null, this.resources, this.batchRequest));
-		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("embed[src*=\".pdf\"]"), "src", this.baseURI, this.options, null, this.resources, this.batchRequest));
-		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("audio[src], audio > source[src]"), "src", this.baseURI, this.options, "audio", this.resources, this.batchRequest));
-		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("video[src], video > source[src]"), "src", this.baseURI, this.options, "video", this.resources, this.batchRequest));
-		resourcePromises.push(ProcessorHelper.processAttribute(this.doc.querySelectorAll("model[src]"), "src", this.baseURI, this.options, null, this.resources, this.batchRequest));
-		await Promise.all(resourcePromises);
-		if (this.options.saveFavicon) {
-			ProcessorHelper.processShortcutIcons(this.doc);
-		}
+		await ProcessorHelper.processPageResources(this.doc, this.baseURI, this.options, this.resources, this.batchRequest);
 	}
 
 	async processScripts() {
@@ -1361,30 +1315,7 @@ class Processor {
 	}
 
 	replaceStylesheets() {
-		for (const [key, stylesheetInfo] of this.stylesheets) {
-			if (key.urlNode) {
-				const name = "stylesheet_" + this.resources.stylesheets.size + ".css";
-				if (!isDataURL(stylesheetInfo.url) && this.options.saveOriginalURLs) {
-					key.urlNode.value = "-sf-url-original(" + JSON.stringify(stylesheetInfo.url) + ") " + name;
-				} else {
-					key.urlNode.value = name;
-				}
-				this.resources.stylesheets.set(this.resources.stylesheets.size, { name, content: generateStylesheetContent(stylesheetInfo.stylesheet, this.options), url: stylesheetInfo.url });
-			}
-		}
-		for (const [key, stylesheetInfo] of this.stylesheets) {
-			if (key.element) {
-				if (key.element.tagName.toUpperCase() == "LINK") {
-					const linkElement = key.element;
-					const name = "stylesheet_" + this.resources.stylesheets.size + ".css";
-					linkElement.setAttribute("href", name);
-					this.resources.stylesheets.set(this.resources.stylesheets.size, { name, content: generateStylesheetContent(stylesheetInfo.stylesheet, this.options), url: stylesheetInfo.url });
-				} else {
-					const styleElement = key.element;
-					styleElement.textContent = generateStylesheetContent(stylesheetInfo.stylesheet, this.options);
-				}
-			}
-		}
+		ProcessorHelper.replaceStylesheets(this.stylesheets, this.resources, this.options);
 	}
 
 	replaceStyleAttributes() {
@@ -1392,7 +1323,7 @@ class Processor {
 			const declarationList = this.styles.get(element);
 			if (declarationList) {
 				this.styles.delete(element);
-				element.setAttribute("style", generateStylesheetContent(declarationList, this.options));
+				element.setAttribute("style", ProcessorHelper.generateStylesheetContent(declarationList, this.options));
 			} else {
 				element.setAttribute("style", "");
 			}
@@ -1486,99 +1417,79 @@ const ABOUT_BLANK_URI = "about:blank";
 const REGEXP_URL_HASH = /(#.+?)$/;
 
 class ProcessorHelper {
-	static getAdditionalPageData(doc, content, pageResources) {
-		const resources = {};
-		let textContent = content;
-		pageResources.stylesheets.forEach(resource => textContent += resource.content);
-		Object.keys(pageResources).forEach(resourceType => {
-			const unusedResources = Array.from(pageResources[resourceType]).filter(([, value]) => !textContent.includes(value.name));
-			unusedResources.forEach(([indexResource]) => pageResources[resourceType].delete(indexResource));
-			resources[resourceType] = Array.from(pageResources[resourceType].values());
-		});
-		const viewportElement = doc.head.querySelector("meta[name=viewport]");
-		const viewport = viewportElement ? viewportElement.content : null;
-		const doctype = util.getDoctypeString(doc);
-		return {
-			doctype,
-			resources,
-			viewport
-		};
-	}
-
-	static setBackgroundImage(element, url, style) {
-		element.style.setProperty("background-blend-mode", "normal", "important");
-		element.style.setProperty("background-clip", "content-box", "important");
-		element.style.setProperty("background-position", style && style["background-position"] ? style["background-position"] : "center", "important");
-		element.style.setProperty("background-color", style && style["background-color"] ? style["background-color"] : "transparent", "important");
-		element.style.setProperty("background-image", url, "important");
-		element.style.setProperty("background-size", style && style["background-size"] ? style["background-size"] : "100% 100%", "important");
-		element.style.setProperty("background-origin", "content-box", "important");
-		element.style.setProperty("background-repeat", "no-repeat", "important");
-	}
-
-	static processShortcutIcons(doc) {
-		let shortcutIcon = findShortcutIcon(Array.from(doc.querySelectorAll("link[href][rel=\"shortcut icon\"]")));
-		if (!shortcutIcon) {
-			shortcutIcon = findShortcutIcon(Array.from(doc.querySelectorAll("link[href][rel=\"icon\"]")));
+	static async processPageResources(doc, baseURI, options, resources, batchRequest) {
+		const processAttributeArgs = [
+			["link[href][rel*=\"icon\"]", "href", true],
+			["object[type=\"image/svg+xml\"], object[type=\"image/svg-xml\"], object[data*=\".svg\"]", "data"],
+			["img[src], input[src][type=image]", "src"],
+			["embed[src*=\".svg\"]", "src"],
+			["video[poster]", "poster"],
+			["*[background]", "background"],
+			["image", "xlink:href"],
+			["image", "href"]
+		];
+		if (options.blockImages) {
+			doc.querySelectorAll("svg").forEach(element => element.remove());
 		}
-		if (!shortcutIcon) {
-			shortcutIcon = findShortcutIcon(Array.from(doc.querySelectorAll("link[href][rel*=\"icon\"]")));
-			if (shortcutIcon) {
-				shortcutIcon.rel = "shortcut icon";
+		let resourcePromises = processAttributeArgs.map(([selector, attributeName, removeElementIfMissing]) =>
+			ProcessorHelper.processAttribute(doc.querySelectorAll(selector), attributeName, baseURI, options, "image", resources, batchRequest, removeElementIfMissing)
+		);
+		resourcePromises = resourcePromises.concat([
+			ProcessorHelper.processXLinks(doc.querySelectorAll("use"), doc, baseURI, options, batchRequest),
+			ProcessorHelper.processSrcset(doc.querySelectorAll("img[srcset], source[srcset]"), baseURI, options, resources, batchRequest)
+		]);
+		resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("object[data*=\".pdf\"]"), "data", baseURI, options, null, resources, batchRequest));
+		resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("embed[src*=\".pdf\"]"), "src", baseURI, options, null, resources, batchRequest));
+		resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("audio[src], audio > source[src]"), "src", baseURI, options, "audio", resources, batchRequest));
+		resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("video[src], video > source[src]"), "src", baseURI, options, "video", resources, batchRequest));
+		resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("model[src]"), "src", baseURI, options, null, resources, batchRequest));
+		await Promise.all(resourcePromises);
+		if (options.saveFavicon) {
+			ProcessorHelper.processShortcutIcons(doc);
+		}
+	}
+
+	static async processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
+		if (options.blockStylesheets) {
+			if (element.tagName.toUpperCase() == "LINK") {
+				element.href = util.EMPTY_RESOURCE;
+			} else {
+				element.textContent = "";
+			}
+		} else {
+			if (element.tagName.toUpperCase() == "LINK") {
+				await ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, element.href, baseURI, options, workStyleElement, resources, stylesheets);
+			} else {
+				stylesheets.set({ element }, stylesheetInfo);
+				stylesheetInfo.stylesheet = cssTree.parse(element.textContent, { context: "stylesheet", parseCustomProperty: true });
+				await ProcessorHelper.resolveImportURLs(stylesheetInfo, baseURI, options, workStyleElement, resources, stylesheets);
 			}
 		}
-		if (shortcutIcon) {
-			doc.querySelectorAll("link[href][rel*=\"icon\"]").forEach(linkElement => {
-				if (linkElement != shortcutIcon) {
-					linkElement.remove();
-				}
-			});
-		}
 	}
 
-	static removeSingleLineCssComments(stylesheet) {
-		if (stylesheet.children) {
-			const removedRules = [];
-			for (let cssRule = stylesheet.children.head; cssRule; cssRule = cssRule.next) {
-				const ruleData = cssRule.data;
-				if (ruleData.type == "Raw" && ruleData.value && ruleData.value.trim().startsWith("//")) {
-					removedRules.push(cssRule);
-				}
-			}
-			removedRules.forEach(cssRule => stylesheet.children.remove(cssRule));
-		}
-	}
-
-	static replacePseudoClassDefined(stylesheet) {
-		const removedSelectors = [];
-		if (stylesheet.children) {
-			for (let cssRule = stylesheet.children.head; cssRule; cssRule = cssRule.next) {
-				const ruleData = cssRule.data;
-				if (ruleData.type == "Rule" && ruleData.prelude && ruleData.prelude.children) {
-					for (let selector = ruleData.prelude.children.head; selector; selector = selector.next) {
-						replacePseudoDefinedSelector(selector, ruleData.prelude);
-					}
-				}
-			}
-		}
-		if (removedSelectors.length) {
-			removedSelectors.forEach(({ parentSelector, selector }) => {
-				if (parentSelector.data.children.size == 0 || !selector.prev || selector.prev.data.type == "Combinator" || selector.prev.data.type == "WhiteSpace") {
-					parentSelector.data.children.replace(selector, cssTree.parse("*", { context: "selector" }).children.head);
+	static replaceStylesheets(stylesheets, resources, options) {
+		for (const [key, stylesheetInfo] of stylesheets) {
+			if (key.urlNode) {
+				const name = "stylesheet_" + resources.stylesheets.size + ".css";
+				if (!isDataURL(stylesheetInfo.url) && options.saveOriginalURLs) {
+					key.urlNode.value = "-sf-url-original(" + JSON.stringify(stylesheetInfo.url) + ") " + name;
 				} else {
-					parentSelector.data.children.remove(selector);
+					key.urlNode.value = name;
 				}
-			});
-		}
-
-		function replacePseudoDefinedSelector(selector, parentSelector) {
-			if (selector.data.children) {
-				for (let childSelector = selector.data.children.head; childSelector; childSelector = childSelector.next) {
-					replacePseudoDefinedSelector(childSelector, selector);
-				}
+				resources.stylesheets.set(resources.stylesheets.size, { name, content: ProcessorHelper.generateStylesheetContent(stylesheetInfo.stylesheet, options), url: stylesheetInfo.url });
 			}
-			if (selector.data.type == "PseudoClassSelector" && selector.data.name == "defined") {
-				removedSelectors.push({ parentSelector, selector });
+		}
+		for (const [key, stylesheetInfo] of stylesheets) {
+			if (key.element) {
+				if (key.element.tagName.toUpperCase() == "LINK") {
+					const linkElement = key.element;
+					const name = "stylesheet_" + resources.stylesheets.size + ".css";
+					linkElement.setAttribute("href", name);
+					resources.stylesheets.set(resources.stylesheets.size, { name, content: ProcessorHelper.generateStylesheetContent(stylesheetInfo.stylesheet, options), url: stylesheetInfo.url });
+				} else {
+					const styleElement = key.element;
+					styleElement.textContent = ProcessorHelper.generateStylesheetContent(stylesheetInfo.stylesheet, options);
+				}
 			}
 		}
 	}
@@ -1617,7 +1528,7 @@ class ProcessorHelper {
 								mediaText
 							};
 							stylesheets.set({ urlNode }, stylesheetInfo);
-							const content = await getStylesheetContent(resourceURL);
+							const content = await ProcessorHelper.getStylesheetContent(resourceURL, options);
 							stylesheetInfo.url = resourceURL = content.resourceURL;
 							const existingStylesheet = Array.from(stylesheets).find(([, stylesheetInfo]) => stylesheetInfo.resourceURL == resourceURL);
 							if (existingStylesheet) {
@@ -1632,71 +1543,6 @@ class ProcessorHelper {
 				}
 			}
 		}));
-
-		async function getStylesheetContent(resourceURL) {
-			const content = await util.getContent(resourceURL, {
-				maxResourceSize: options.maxResourceSize,
-				maxResourceSizeEnabled: options.maxResourceSizeEnabled,
-				validateTextContentType: true,
-				frameId: options.frameId,
-				charset: options.charset,
-				resourceReferrer: options.resourceReferrer,
-				baseURI: options.baseURI,
-				blockMixedContent: options.blockMixedContent,
-				expectedType: "stylesheet",
-				acceptHeaders: options.acceptHeaders,
-				networkTimeout: options.networkTimeout
-			});
-			if (!(matchCharsetEquals(content.data, content.charset) || matchCharsetEquals(content.data, options.charset))) {
-				options = Object.assign({}, options, { charset: getCharset(content.data) });
-				return util.getContent(resourceURL, {
-					maxResourceSize: options.maxResourceSize,
-					maxResourceSizeEnabled: options.maxResourceSizeEnabled,
-					validateTextContentType: true,
-					frameId: options.frameId,
-					charset: options.charset,
-					resourceReferrer: options.resourceReferrer,
-					baseURI: options.baseURI,
-					blockMixedContent: options.blockMixedContent,
-					expectedType: "stylesheet",
-					acceptHeaders: options.acceptHeaders,
-					networkTimeout: options.networkTimeout
-				});
-			} else {
-				return content;
-			}
-		}
-	}
-
-	static resolveStylesheetURLs(stylesheet, baseURI, workStylesheet) {
-		const urls = getUrlFunctions(stylesheet);
-		urls.map(urlNode => {
-			const originalResourceURL = urlNode.value;
-			let resourceURL = normalizeURL(originalResourceURL);
-			if (!testIgnoredPath(resourceURL)) {
-				workStylesheet.textContent = "tmp { content:\"" + resourceURL + "\"}";
-				if (workStylesheet.sheet && workStylesheet.sheet.cssRules) {
-					resourceURL = util.removeQuotes(workStylesheet.sheet.cssRules[0].style.getPropertyValue("content"));
-				}
-				if (!testIgnoredPath(resourceURL)) {
-					if (!resourceURL || testValidPath(resourceURL)) {
-						let resolvedURL;
-						if (!originalResourceURL.startsWith("#")) {
-							try {
-								resolvedURL = util.resolveURL(resourceURL, baseURI);
-							} catch (error) {
-								// ignored
-							}
-						}
-						if (testValidURL(resolvedURL)) {
-							urlNode.value = resolvedURL;
-						}
-					} else {
-						urlNode.value = util.EMPTY_RESOURCE;
-					}
-				}
-			}
-		});
 	}
 
 	static async resolveLinkStylesheetURLs(stylesheetInfo, element, resourceURL, baseURI, options, workStylesheet, resources, stylesheets) {
@@ -1753,9 +1599,9 @@ class ProcessorHelper {
 				removedRules.push(cssRule);
 			} else if (ruleData.block && ruleData.block.children) {
 				if (ruleData.type == "Rule") {
-					promises.push(this.processStyle(ruleData, baseURI, options, resources, batchRequest));
+					promises.push(ProcessorHelper.processStyle(ruleData, baseURI, options, resources, batchRequest));
 				} else if (ruleData.type == "Atrule" && (ruleData.name == "media" || ruleData.name == "supports")) {
-					promises.push(this.processStylesheet(ruleData.block.children, baseURI, options, resources, batchRequest));
+					promises.push(ProcessorHelper.processStylesheet(ruleData.block.children, baseURI, options, resources, batchRequest));
 				} else if (ruleData.type == "Atrule" && ruleData.name == "font-face") {
 					promises.push(processFontFaceRule(ruleData));
 				}
@@ -1834,7 +1680,7 @@ class ProcessorHelper {
 								let { content, indexResource, extension, contentType } = await batchRequest.addURL(resourceURL,
 									{ asBinary: true, expectedType });
 								if (originURL) {
-									if (testEmptyResource(content)) {
+									if (ProcessorHelper.testEmptyResource(content)) {
 										try {
 											originURL = util.resolveURL(originURL, baseURI);
 										} catch (error) {
@@ -1857,9 +1703,9 @@ class ProcessorHelper {
 										}
 									}
 								}
-								if (removeElementIfMissing && testEmptyResource(content)) {
+								if (removeElementIfMissing && ProcessorHelper.testEmptyResource(content)) {
 									resourceElement.remove();
-								} else if (!testEmptyResource(content)) {
+								} else if (!ProcessorHelper.testEmptyResource(content)) {
 									const name = "images/" + indexResource + extension;
 									resourceElement.setAttribute(attributeName, name);
 									resources.images.set(indexResource, { name, content, extension, contentType, url: resourceURL });
@@ -1880,6 +1726,226 @@ class ProcessorHelper {
 				resourceElement.setAttribute(attributeName, util.EMPTY_RESOURCE);
 			}
 		}
+	}
+
+	static async processSrcset(resourceElements, baseURI, options, resources, batchRequest) {
+		await Promise.all(Array.from(resourceElements).map(async resourceElement => {
+			const originSrcset = resourceElement.getAttribute("srcset");
+			const srcset = util.parseSrcset(originSrcset);
+			if (options.saveOriginalURLs && !isDataURL(originSrcset)) {
+				resourceElement.setAttribute("data-sf-original-srcset", originSrcset);
+			}
+			if (!options.blockImages) {
+				const srcsetValues = await Promise.all(srcset.map(async srcsetValue => {
+					let resourceURL = normalizeURL(srcsetValue.url);
+					if (!testIgnoredPath(resourceURL)) {
+						if (testValidPath(resourceURL)) {
+							try {
+								resourceURL = util.resolveURL(resourceURL, baseURI);
+							} catch (error) {
+								// ignored
+							}
+							if (testValidURL(resourceURL)) {
+								const { content, indexResource, extension, contentType } = await batchRequest.addURL(resourceURL, { asBinary: true, expectedType: "image" });
+								const name = "images/" + indexResource + extension;
+								resources.images.set(indexResource, { name, content, extension, contentType, url: resourceURL });
+								return name + (srcsetValue.w ? " " + srcsetValue.w + "w" : srcsetValue.d ? " " + srcsetValue.d + "x" : "");
+							} else {
+								return "";
+							}
+						} else {
+							return "";
+						}
+					} else {
+						return resourceURL + (srcsetValue.w ? " " + srcsetValue.w + "w" : srcsetValue.d ? " " + srcsetValue.d + "x" : "");
+					}
+				}));
+				resourceElement.setAttribute("srcset", srcsetValues.join(", "));
+			} else {
+				resourceElement.setAttribute("srcset", "");
+			}
+		}));
+	}
+
+	static testEmptyResource(resource) {
+		return !resource;
+	}
+
+	static generateStylesheetContent(stylesheet, options) {
+		if (options.compressCSS) {
+			ProcessorHelper.removeSingleLineCssComments(stylesheet);
+		}
+		ProcessorHelper.replacePseudoClassDefined(stylesheet);
+		let stylesheetContent = cssTree.generate(stylesheet);
+		if (options.compressCSS) {
+			stylesheetContent = util.compressCSS(stylesheetContent);
+		}
+		if (options.saveOriginalURLs) {
+			stylesheetContent = replaceOriginalURLs(stylesheetContent);
+		}
+		return stylesheetContent;
+	}
+
+	static getAdditionalPageData(doc, content, pageResources) {
+		const resources = {};
+		let textContent = content;
+		pageResources.stylesheets.forEach(resource => textContent += resource.content);
+		Object.keys(pageResources).forEach(resourceType => {
+			const unusedResources = Array.from(pageResources[resourceType]).filter(([, value]) => !textContent.includes(value.name));
+			unusedResources.forEach(([indexResource]) => pageResources[resourceType].delete(indexResource));
+			resources[resourceType] = Array.from(pageResources[resourceType].values());
+		});
+		const viewportElement = doc.head.querySelector("meta[name=viewport]");
+		const viewport = viewportElement ? viewportElement.content : null;
+		const doctype = util.getDoctypeString(doc);
+		return {
+			doctype,
+			resources,
+			viewport
+		};
+	}
+
+	static setBackgroundImage(element, url, style) {
+		element.style.setProperty("background-blend-mode", "normal", "important");
+		element.style.setProperty("background-clip", "content-box", "important");
+		element.style.setProperty("background-position", style && style["background-position"] ? style["background-position"] : "center", "important");
+		element.style.setProperty("background-color", style && style["background-color"] ? style["background-color"] : "transparent", "important");
+		element.style.setProperty("background-image", url, "important");
+		element.style.setProperty("background-size", style && style["background-size"] ? style["background-size"] : "100% 100%", "important");
+		element.style.setProperty("background-origin", "content-box", "important");
+		element.style.setProperty("background-repeat", "no-repeat", "important");
+	}
+
+	static async getStylesheetContent(resourceURL, options) {
+		const content = await util.getContent(resourceURL, {
+			maxResourceSize: options.maxResourceSize,
+			maxResourceSizeEnabled: options.maxResourceSizeEnabled,
+			validateTextContentType: true,
+			frameId: options.frameId,
+			charset: options.charset,
+			resourceReferrer: options.resourceReferrer,
+			baseURI: options.baseURI,
+			blockMixedContent: options.blockMixedContent,
+			expectedType: "stylesheet",
+			acceptHeaders: options.acceptHeaders,
+			networkTimeout: options.networkTimeout
+		});
+		if (!(matchCharsetEquals(content.data, content.charset) || matchCharsetEquals(content.data, options.charset))) {
+			options = Object.assign({}, options, { charset: getCharset(content.data) });
+			return util.getContent(resourceURL, {
+				maxResourceSize: options.maxResourceSize,
+				maxResourceSizeEnabled: options.maxResourceSizeEnabled,
+				validateTextContentType: true,
+				frameId: options.frameId,
+				charset: options.charset,
+				resourceReferrer: options.resourceReferrer,
+				baseURI: options.baseURI,
+				blockMixedContent: options.blockMixedContent,
+				expectedType: "stylesheet",
+				acceptHeaders: options.acceptHeaders,
+				networkTimeout: options.networkTimeout
+			});
+		} else {
+			return content;
+		}
+	}
+
+	static processShortcutIcons(doc) {
+		let shortcutIcon = findShortcutIcon(Array.from(doc.querySelectorAll("link[href][rel=\"shortcut icon\"]")));
+		if (!shortcutIcon) {
+			shortcutIcon = findShortcutIcon(Array.from(doc.querySelectorAll("link[href][rel=\"icon\"]")));
+		}
+		if (!shortcutIcon) {
+			shortcutIcon = findShortcutIcon(Array.from(doc.querySelectorAll("link[href][rel*=\"icon\"]")));
+			if (shortcutIcon) {
+				shortcutIcon.rel = "shortcut icon";
+			}
+		}
+		if (shortcutIcon) {
+			doc.querySelectorAll("link[href][rel*=\"icon\"]").forEach(linkElement => {
+				if (linkElement != shortcutIcon) {
+					linkElement.remove();
+				}
+			});
+		}
+	}
+
+	static removeSingleLineCssComments(stylesheet) {
+		if (stylesheet.children) {
+			const removedRules = [];
+			for (let cssRule = stylesheet.children.head; cssRule; cssRule = cssRule.next) {
+				const ruleData = cssRule.data;
+				if (ruleData.type == "Raw" && ruleData.value && ruleData.value.trim().startsWith("//")) {
+					removedRules.push(cssRule);
+				}
+			}
+			removedRules.forEach(cssRule => stylesheet.children.remove(cssRule));
+		}
+	}
+
+	static replacePseudoClassDefined(stylesheet) {
+		const removedSelectors = [];
+		if (stylesheet.children) {
+			for (let cssRule = stylesheet.children.head; cssRule; cssRule = cssRule.next) {
+				const ruleData = cssRule.data;
+				if (ruleData.type == "Rule" && ruleData.prelude && ruleData.prelude.children) {
+					for (let selector = ruleData.prelude.children.head; selector; selector = selector.next) {
+						replacePseudoDefinedSelector(selector, ruleData.prelude);
+					}
+				}
+			}
+		}
+		if (removedSelectors.length) {
+			removedSelectors.forEach(({ parentSelector, selector }) => {
+				if (parentSelector.data.children.size == 0 || !selector.prev || selector.prev.data.type == "Combinator" || selector.prev.data.type == "WhiteSpace") {
+					parentSelector.data.children.replace(selector, cssTree.parse("*", { context: "selector" }).children.head);
+				} else {
+					parentSelector.data.children.remove(selector);
+				}
+			});
+		}
+
+		function replacePseudoDefinedSelector(selector, parentSelector) {
+			if (selector.data.children) {
+				for (let childSelector = selector.data.children.head; childSelector; childSelector = childSelector.next) {
+					replacePseudoDefinedSelector(childSelector, selector);
+				}
+			}
+			if (selector.data.type == "PseudoClassSelector" && selector.data.name == "defined") {
+				removedSelectors.push({ parentSelector, selector });
+			}
+		}
+	}
+
+	static resolveStylesheetURLs(stylesheet, baseURI, workStylesheet) {
+		const urls = getUrlFunctions(stylesheet);
+		urls.map(urlNode => {
+			const originalResourceURL = urlNode.value;
+			let resourceURL = normalizeURL(originalResourceURL);
+			if (!testIgnoredPath(resourceURL)) {
+				workStylesheet.textContent = "tmp { content:\"" + resourceURL + "\"}";
+				if (workStylesheet.sheet && workStylesheet.sheet.cssRules) {
+					resourceURL = util.removeQuotes(workStylesheet.sheet.cssRules[0].style.getPropertyValue("content"));
+				}
+				if (!testIgnoredPath(resourceURL)) {
+					if (!resourceURL || testValidPath(resourceURL)) {
+						let resolvedURL;
+						if (!originalResourceURL.startsWith("#")) {
+							try {
+								resolvedURL = util.resolveURL(resourceURL, baseURI);
+							} catch (error) {
+								// ignored
+							}
+						}
+						if (testValidURL(resolvedURL)) {
+							urlNode.value = resolvedURL;
+						}
+					} else {
+						urlNode.value = util.EMPTY_RESOURCE;
+					}
+				}
+			}
+		});
 	}
 
 	static async processXLinks(resourceElements, doc, baseURI, options, batchRequest) {
@@ -1931,45 +1997,6 @@ class ProcessorHelper {
 				}
 			} else {
 				resourceElement.setAttribute(attributeName, util.EMPTY_RESOURCE);
-			}
-		}));
-	}
-
-	static async processSrcset(resourceElements, baseURI, options, resources, batchRequest) {
-		await Promise.all(Array.from(resourceElements).map(async resourceElement => {
-			const originSrcset = resourceElement.getAttribute("srcset");
-			const srcset = util.parseSrcset(originSrcset);
-			if (options.saveOriginalURLs && !isDataURL(originSrcset)) {
-				resourceElement.setAttribute("data-sf-original-srcset", originSrcset);
-			}
-			if (!options.blockImages) {
-				const srcsetValues = await Promise.all(srcset.map(async srcsetValue => {
-					let resourceURL = normalizeURL(srcsetValue.url);
-					if (!testIgnoredPath(resourceURL)) {
-						if (testValidPath(resourceURL)) {
-							try {
-								resourceURL = util.resolveURL(resourceURL, baseURI);
-							} catch (error) {
-								// ignored
-							}
-							if (testValidURL(resourceURL)) {
-								const { content, indexResource, extension, contentType } = await batchRequest.addURL(resourceURL, { asBinary: true, expectedType: "image" });
-								const name = "images/" + indexResource + extension;
-								resources.images.set(indexResource, { name, content, extension, contentType, url: resourceURL });
-								return name + (srcsetValue.w ? " " + srcsetValue.w + "w" : srcsetValue.d ? " " + srcsetValue.d + "x" : "");
-							} else {
-								return "";
-							}
-						} else {
-							return "";
-						}
-					} else {
-						return resourceURL + (srcsetValue.w ? " " + srcsetValue.w + "w" : srcsetValue.d ? " " + srcsetValue.d + "x" : "");
-					}
-				}));
-				resourceElement.setAttribute("srcset", srcsetValues.join(", "));
-			} else {
-				resourceElement.setAttribute("srcset", "");
 			}
 		}));
 	}
@@ -2037,21 +2064,6 @@ function getImportFunctions(declarationList) {
 	return cssTree.findAll(declarationList, node => node.type == "Atrule" && node.name == "import");
 }
 
-function generateStylesheetContent(stylesheet, options) {
-	if (options.compressCSS) {
-		ProcessorHelper.removeSingleLineCssComments(stylesheet);
-	}
-	ProcessorHelper.replacePseudoClassDefined(stylesheet);
-	let stylesheetContent = cssTree.generate(stylesheet);
-	if (options.compressCSS) {
-		stylesheetContent = util.compressCSS(stylesheetContent);
-	}
-	if (options.saveOriginalURLs) {
-		stylesheetContent = replaceOriginalURLs(stylesheetContent);
-	}
-	return stylesheetContent;
-}
-
 function findShortcutIcon(shortcutIcons) {
 	shortcutIcons = shortcutIcons.filter(linkElement => linkElement.href != util.EMPTY_RESOURCE);
 	shortcutIcons.sort((linkElement1, linkElement2) => (parseInt(linkElement2.sizes, 10) || 16) - (parseInt(linkElement1.sizes, 10) || 16));
@@ -2076,10 +2088,6 @@ function testValidPath(resourceURL) {
 
 function testValidURL(resourceURL) {
 	return testValidPath(resourceURL) && (resourceURL.match(HTTP_URI_PREFIX) || resourceURL.match(FILE_URI_PREFIX) || resourceURL.startsWith(BLOB_URI_PREFIX)) && resourceURL.match(NOT_EMPTY_URL);
-}
-
-function testEmptyResource(resource) {
-	return !resource;
 }
 
 function log(...args) {
