@@ -547,23 +547,15 @@ class Processor {
 		}
 		const filename = await util.formatFilename(content, this.options);
 		const matchTitle = this.baseURI.match(/([^/]*)\/?(\.html?.*)$/) || this.baseURI.match(/\/\/([^/]*)\/?$/);
-		const resources = {};
-		let textContent = content;
-		this.resources.stylesheets.forEach(resource => textContent += resource.content);
-		Object.keys(this.resources).forEach(resourceType => {
-			const unusedResources = Array.from(this.resources[resourceType]).filter(([, value]) => !textContent.includes(value.name));
-			unusedResources.forEach(([indexResource]) => this.resources[resourceType].delete(indexResource));
-			resources[resourceType] = Array.from(this.resources[resourceType].values());
-		});
-		const viewport = this.doc.head.querySelector("meta[name=viewport]");
+		const { resources, viewport, doctype } = ProcessorHelper.getAdditionalPageData(this.doc, content, this.resources);
 		const pageData = {
 			stats: this.stats.data,
 			title: this.options.title || (this.baseURI && matchTitle ? matchTitle[1] : url.hostname ? url.hostname : ""),
 			filename,
 			content,
 			resources,
-			viewport: viewport ? viewport.content : null,
-			doctype: util.getDoctypeString(this.doc)
+			viewport,
+			doctype
 		};
 		if (this.options.retrieveLinks) {
 			pageData.links = Array.from(new Set(Array.from(this.doc.links).map(linkElement => linkElement.href)));
@@ -1494,6 +1486,25 @@ const ABOUT_BLANK_URI = "about:blank";
 const REGEXP_URL_HASH = /(#.+?)$/;
 
 class ProcessorHelper {
+	static getAdditionalPageData(doc, content, pageResources) {
+		const resources = {};
+		let textContent = content;
+		pageResources.stylesheets.forEach(resource => textContent += resource.content);
+		Object.keys(pageResources).forEach(resourceType => {
+			const unusedResources = Array.from(pageResources[resourceType]).filter(([, value]) => !textContent.includes(value.name));
+			unusedResources.forEach(([indexResource]) => pageResources[resourceType].delete(indexResource));
+			resources[resourceType] = Array.from(pageResources[resourceType].values());
+		});
+		const viewportElement = this.doc.head.querySelector("meta[name=viewport]");
+		const viewport = viewportElement ? viewportElement.content : null;
+		const doctype = util.getDoctypeString(doc);
+		return {
+			doctype,
+			resources,
+			viewport
+		};
+	}
+
 	static setBackgroundImage(element, url, style) {
 		element.style.setProperty("background-blend-mode", "normal", "important");
 		element.style.setProperty("background-clip", "content-box", "important");
