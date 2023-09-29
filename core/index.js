@@ -1495,7 +1495,7 @@ class ProcessorHelper {
 			unusedResources.forEach(([indexResource]) => pageResources[resourceType].delete(indexResource));
 			resources[resourceType] = Array.from(pageResources[resourceType].values());
 		});
-		const viewportElement = this.doc.head.querySelector("meta[name=viewport]");
+		const viewportElement = doc.head.querySelector("meta[name=viewport]");
 		const viewport = viewportElement ? viewportElement.content : null;
 		const doctype = util.getDoctypeString(doc);
 		return {
