@@ -33,7 +33,7 @@ const HTTP_URI_PREFIX = /^https?:\/\//;
 const FILE_URI_PREFIX = /^file:\/\//;
 const EMPTY_URL = /^https?:\/\/+\s*$/;
 const NOT_EMPTY_URL = /^(https?:\/\/|file:\/\/|blob:).+/;
-const PREFIX_DATA_URI_IMAGE_SVG = "data:image/svg+xml,";
+const PREFIX_DATA_URI_IMAGE_SVG = "data:image/svg+xml";
 const UTF8_CHARSET = "utf-8";
 
 let util, cssTree;
