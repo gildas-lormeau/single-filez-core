@@ -1082,7 +1082,7 @@ class Processor {
 				}
 				stylesheetInfo.url = element.href;
 			}
-			await getStylesheet(stylesheetInfo, element, this.baseURI, this.options, this.workStyleElement, this.resources, this.stylesheets);
+			await processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, options, this.workStyleElement, this.resources);
 		}));
 		if (this.options.rootDocument) {
 			const newResources = Object.keys(this.options.updatedResources)
@@ -1095,12 +1095,12 @@ class Processor {
 					const element = this.doc.createElement("style");
 					this.doc.body.appendChild(element);
 					element.textContent = resource.content;
-					await getStylesheet(stylesheetInfo, element, this.baseURI, this.options, this.workStyleElement, this.resources, this.stylesheets);
+					await processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, this.options, this.workStyleElement, this.resources);
 				}
 			}));
 		}
 
-		async function getStylesheet(stylesheetInfo, element, baseURI, options, workStylesheet, resources, stylesheets) {
+		async function processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
 			if (options.blockStylesheets) {
 				if (element.tagName.toUpperCase() == "LINK") {
 					element.href = util.EMPTY_RESOURCE;
@@ -1109,11 +1109,11 @@ class Processor {
 				}
 			} else {
 				if (element.tagName.toUpperCase() == "LINK") {
-					await ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, element.href, baseURI, options, workStylesheet, resources, stylesheets);
+					await ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, element.href, baseURI, options, workStyleElement, resources, stylesheets);
 				} else {
 					stylesheets.set({ element }, stylesheetInfo);
 					stylesheetInfo.stylesheet = cssTree.parse(element.textContent, { context: "stylesheet", parseCustomProperty: true });
-					await ProcessorHelper.resolveImportURLs(stylesheetInfo, baseURI, options, workStylesheet, resources, stylesheets);
+					await ProcessorHelper.resolveImportURLs(stylesheetInfo, baseURI, options, workStyleElement, resources, stylesheets);
 				}
 			}
 		}
