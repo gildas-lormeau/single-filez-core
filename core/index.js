@@ -1067,14 +1067,7 @@ class Processor {
 				mediaText,
 				scoped
 			};
-			if (element.tagName.toUpperCase() == "LINK") {
-				element.removeAttribute("integrity");
-				if (element.charset) {
-					options.charset = element.charset;
-				}
-				stylesheetInfo.url = element.href;
-			}
-			await ProcessorHelper.processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, options, this.workStyleElement, this.resources);
+			await ProcessorHelper.processLinkElement(element, stylesheetInfo, this.stylesheets, this.baseURI, options, this.workStyleElement, this.resources);
 		}));
 		if (this.options.rootDocument) {
 			const newResources = Object.keys(this.options.updatedResources)
@@ -1296,13 +1289,7 @@ class Processor {
 							await frameData.runner.run();
 							const pageData = await frameData.runner.getPageData();
 							frameElement.removeAttribute(util.WIN_ID_ATTRIBUTE_NAME);
-							const name = "frames/" + this.resources.frames.size + "/";
-							if (frameElement.tagName.toUpperCase() == "OBJECT") {
-								frameElement.setAttribute("data", name + "index.html");
-							} else {
-								frameElement.setAttribute("src", name + "index.html");
-							}
-							this.resources.frames.set(frameWindowId, { name, content: pageData.content, resources: pageData.resources, url: frameData.url });
+							ProcessorHelper.processFrame(frameElement, pageData, frameWindowId, frameData);
 							this.stats.addAll(pageData);
 						} else {
 							frameElement.removeAttribute(util.WIN_ID_ATTRIBUTE_NAME);
@@ -1449,6 +1436,17 @@ class ProcessorHelper {
 		}
 	}
 
+	static async processLinkElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
+		if (element.tagName.toUpperCase() == "LINK") {
+			element.removeAttribute("integrity");
+			if (element.charset) {
+				options.charset = element.charset;
+			}
+			stylesheetInfo.url = element.href;
+		}
+		await ProcessorHelper.processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources);
+	}
+
 	static async processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
 		if (options.blockStylesheets) {
 			if (element.tagName.toUpperCase() == "LINK") {
@@ -1589,6 +1587,17 @@ class ProcessorHelper {
 			}
 		}
 	}
+
+	static async processFrame(frameElement, pageData, frameWindowId, frameData) {
+		const name = "frames/" + this.resources.frames.size + "/";
+		if (frameElement.tagName.toUpperCase() == "OBJECT") {
+			frameElement.setAttribute("data", name + "index.html");
+		} else {
+			frameElement.setAttribute("src", name + "index.html");
+		}
+		this.resources.frames.set(frameWindowId, { name, content: pageData.content, resources: pageData.resources, url: frameData.url });
+	}
+
 
 	static async processStylesheet(cssRules, baseURI, options, resources, batchRequest) {
 		const promises = [];
