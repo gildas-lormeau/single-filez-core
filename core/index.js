@@ -1085,7 +1085,9 @@ class Processor {
 			await getStylesheet(stylesheetInfo, element, this.baseURI, this.options, this.workStyleElement, this.resources, this.stylesheets);
 		}));
 		if (this.options.rootDocument) {
-			const newResources = Object.keys(this.options.updatedResources).filter(url => this.options.updatedResources[url].type == "stylesheet" && !this.options.updatedResources[url].retrieved).map(url => this.options.updatedResources[url]);
+			const newResources = Object.keys(this.options.updatedResources)
+				.filter(url => this.options.updatedResources[url].type == "stylesheet" && !this.options.updatedResources[url].retrieved)
+				.map(url => this.options.updatedResources[url]);
 			await Promise.all(newResources.map(async resource => {
 				resource.retrieved = true;
 				if (!this.options.blockStylesheets) {
