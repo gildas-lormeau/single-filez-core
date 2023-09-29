@@ -1291,7 +1291,7 @@ class Processor {
 							await frameData.runner.run();
 							const pageData = await frameData.runner.getPageData();
 							frameElement.removeAttribute(util.WIN_ID_ATTRIBUTE_NAME);
-							ProcessorHelper.processFrame(frameElement, pageData, frameWindowId, frameData);
+							ProcessorHelper.processFrame(frameElement, pageData, this.resources, frameWindowId, frameData);
 							this.stats.addAll(pageData);
 						} else {
 							frameElement.removeAttribute(util.WIN_ID_ATTRIBUTE_NAME);
