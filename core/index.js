@@ -583,8 +583,8 @@ class Processor {
 					if (imageData) {
 						if (this.options.removeHiddenElements && (
 							(imageData.size && !imageData.size.pxWidth && !imageData.size.pxHeight) ||
-							(imgElement.getAttribute(util.HIDDEN_CONTENT_ATTRIBUTE_NAME) == "")
-						)) {
+							imgElement.getAttribute(util.HIDDEN_CONTENT_ATTRIBUTE_NAME) == "")
+						) {
 							imgElement.setAttribute("src", util.EMPTY_RESOURCE);
 						} else {
 							if (imageData.currentSrc) {
