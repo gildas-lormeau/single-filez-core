@@ -1823,7 +1823,7 @@ class ProcessorHelper {
 								let { content, indexResource, extension, contentType } = await batchRequest.addURL(resourceURL,
 									{ asBinary: true, expectedType });
 								if (originURL) {
-									if (!content) {
+									if (testEmptyResource(content)) {
 										try {
 											originURL = util.resolveURL(originURL, baseURI);
 										} catch (error) {
@@ -1846,9 +1846,9 @@ class ProcessorHelper {
 										}
 									}
 								}
-								if (removeElementIfMissing && !content) {
+								if (removeElementIfMissing && testEmptyResource(content)) {
 									resourceElement.remove();
-								} else if (content) {
+								} else if (!testEmptyResource(content)) {
 									const name = "images/" + indexResource + extension;
 									resourceElement.setAttribute(attributeName, name);
 									resources.images.set(indexResource, { name, content, extension, contentType, url: resourceURL });
@@ -2065,6 +2065,10 @@ function testValidPath(resourceURL) {
 
 function testValidURL(resourceURL) {
 	return testValidPath(resourceURL) && (resourceURL.match(HTTP_URI_PREFIX) || resourceURL.match(FILE_URI_PREFIX) || resourceURL.startsWith(BLOB_URI_PREFIX)) && resourceURL.match(NOT_EMPTY_URL);
+}
+
+function testEmptyResource(resource) {
+	return !resource;
 }
 
 function log(...args) {
