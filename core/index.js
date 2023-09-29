@@ -121,7 +121,7 @@ const STAGES = [{
 	],
 	parallel: [
 		{ option: "blockVideos", action: "insertMissingVideoPosters" },
-		{ action: "resolveStylesheetURLs" },
+		{ action: "resolveStylesheetsURLs" },
 		{ option: "!removeFrames", action: "resolveFrameURLs" }
 	]
 }, {
@@ -1055,7 +1055,7 @@ class Processor {
 		});
 	}
 
-	async resolveStylesheetURLs() {
+	async resolveStylesheetsURLs() {
 		await Promise.all(Array.from(this.doc.querySelectorAll("style, link[rel*=stylesheet]")).map(async element => {
 			const options = Object.assign({}, this.options, { charset: this.charset });
 			let mediaText;
