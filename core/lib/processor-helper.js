@@ -54,7 +54,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 	const ProcessorHelperCommon = getProcessorHelperCommonClass(util, cssTree);
 
 	return class ProcessorHelper extends ProcessorHelperCommon {
-		async processPageResources(doc, baseURI, options, resources, batchRequest) {
+		async processPageResources(doc, baseURI, options, resources, styles, batchRequest) {
 			const processAttributeArgs = [
 				["link[href][rel*=\"icon\"]", "href", true],
 				["object[type=\"image/svg+xml\"], object[type=\"image/svg-xml\"], object[data*=\".svg\"]", "data"],
@@ -115,7 +115,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 			}
 		}
 
-		replaceStylesheets(stylesheets, resources, options) {
+		replaceStylesheets(doc, stylesheets, resources, options) {
 			for (const [key, stylesheetInfo] of stylesheets) {
 				if (key.urlNode) {
 					const name = "stylesheet_" + resources.stylesheets.size + ".css";

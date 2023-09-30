@@ -1225,7 +1225,7 @@ class Processor {
 	}
 
 	async processPageResources() {
-		await this.processorHelper.processPageResources(this.doc, this.baseURI, this.options, this.resources, this.batchRequest);
+		await this.processorHelper.processPageResources(this.doc, this.baseURI, this.options, this.resources, this.styles, this.batchRequest);
 	}
 
 	async processScripts() {
@@ -1308,7 +1308,7 @@ class Processor {
 	}
 
 	replaceStylesheets() {
-		this.processorHelper.replaceStylesheets(this.stylesheets, this.resources, this.options);
+		this.processorHelper.replaceStylesheets(this.doc, this.stylesheets, this.resources, this.options);
 	}
 
 	replaceStyleAttributes() {
