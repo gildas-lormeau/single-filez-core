@@ -406,10 +406,10 @@ class Processor {
 		this.stylesheets = new Map();
 		this.styles = new Map();
 		this.resources = {
+			fonts: new Map(),
 			stylesheets: new Map(),
 			scripts: new Map(),
 			images: new Map(),
-			fonts: new Map(),
 			frames: new Map()
 		};
 		this.fontTests = options.fontTests;
