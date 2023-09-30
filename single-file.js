@@ -99,9 +99,6 @@ async function getPageData(options = {}, initOptions, doc = globalThis.document,
 		frames.cleanup(framesSessionId);
 	}
 	const pageData = await processor.getPageData();
-	if (options.infobarScript) {
-		pageData.content += options.infobarScript;
-	}
 	if (options.compressContent) {
 		const blob = await processors.compression.process(pageData, {
 			insertTextBody: options.insertTextBody,
