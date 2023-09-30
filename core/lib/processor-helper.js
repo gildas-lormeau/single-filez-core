@@ -23,11 +23,13 @@
 
 /* global globalThis */
 
+import * as cssTree from "./../../vendor/css-tree.js";
+
 const JSON = globalThis.JSON;
 
 const ABOUT_BLANK_URI = "about:blank";
 
-let util, cssTree;
+let util;
 
 import {
 	getProcessorHelperCommonClass,
@@ -45,12 +47,12 @@ import {
 } from "./processor-helper-common.js";
 
 export {
-	getProcessorHelperClass
+	getProcessorHelperClass,
+	cssTree
 };
 
-function getProcessorHelperClass(utilInstance, cssTreeInstance) {
+function getProcessorHelperClass(utilInstance) {
 	util = utilInstance;
-	cssTree = cssTreeInstance;
 	const ProcessorHelperCommon = getProcessorHelperCommonClass(util, cssTree);
 
 	return class ProcessorHelper extends ProcessorHelperCommon {

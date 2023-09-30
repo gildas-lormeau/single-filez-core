@@ -26,6 +26,7 @@
 import * as vendor from "./../vendor/index.js";
 import * as modules from "./../modules/index.js";
 import * as helper from "./helper.js";
+import * as fontsAltMinifier from "./lib/css-fonts-alt-minifier.js";
 
 const DEBUG = false;
 const ONE_MB = 1024 * 1024;
@@ -146,7 +147,7 @@ function getInstance(utilOptions) {
 			return modules.fontsMinifier.process(doc, stylesheets, styles, options);
 		},
 		removeAlternativeFonts(doc, stylesheets, fonts, fontTests) {
-			return modules.fontsAltMinifier.process(doc, stylesheets, fonts, fontTests);
+			return fontsAltMinifier.process(doc, stylesheets, fonts, fontTests);
 		},
 		getMediaAllInfo(doc, stylesheets, styles) {
 			return modules.matchedRules.getMediaAllInfo(doc, stylesheets, styles);
