@@ -795,6 +795,7 @@ class Processor {
 				element.remove();
 			}
 		});
+		this.processorHelper.removeUnusedStylesheets(this.doc);
 		this.doc.querySelectorAll("link[rel*=stylesheet]:not([href]),link[rel*=stylesheet][href=\"\"]").forEach(element => element.remove());
 		if (this.options.removeHiddenElements) {
 			this.doc.querySelectorAll("input[type=hidden]").forEach(element => element.remove());

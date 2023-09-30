@@ -523,6 +523,9 @@ function getProcessorHelperClass(utilInstance) {
 		setMetaCSP(metaElement) {
 			metaElement.content = "default-src 'none'; font-src 'self' data: blob:; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline' data: blob:; frame-src 'self' data: blob:; media-src 'self' data: blob:; script-src 'self' 'unsafe-inline' data: blob:; object-src 'self' data: blob:;";
 		}
+
+		removeUnusedStylesheets() {
+		}
 	};
 }
 
