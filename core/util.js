@@ -40,7 +40,6 @@ const CONTENT_TYPE_EXTENSIONS = {
 	"image/webp": ".webp"
 };
 
-
 const URL = globalThis.URL;
 const DOMParser = globalThis.DOMParser;
 const Blob = globalThis.Blob;
