@@ -408,7 +408,7 @@ class Processor {
 			scripts: new Map(),
 			images: new Map(),
 			fonts: new Map(),
-			frames: new Map(),
+			frames: new Map()
 		};
 		this.fontTests = options.fontTests;
 	}
