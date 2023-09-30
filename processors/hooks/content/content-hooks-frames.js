@@ -40,6 +40,7 @@ const IMAGE_LOADED_EVENT = "single-filez-image-loaded";
 const NEW_FONT_FACE_EVENT = "single-filez-new-font-face";
 const DELETE_FONT_EVENT = "single-filez-delete-font";
 const CLEAR_FONTS_EVENT = "single-filez-clear-fonts";
+const FONT_FACE_PROPERTY_NAME = "_singleFileZ_fontFaces";
 
 const addEventListener = (type, listener, options) => globalThis.addEventListener(type, listener, options);
 const dispatchEvent = event => { try { globalThis.dispatchEvent(event); } catch (error) {  /* ignored */ } };
@@ -49,10 +50,10 @@ const Document = globalThis.Document;
 const JSON = globalThis.JSON;
 
 let fontFaces;
-if (window._singleFileZ_fontFaces) {
-	fontFaces = window._singleFileZ_fontFaces;
+if (window[FONT_FACE_PROPERTY_NAME]) {
+	fontFaces = window[FONT_FACE_PROPERTY_NAME];
 } else {
-	fontFaces = window._singleFileZ_fontFaces = new Map();
+	fontFaces = window[FONT_FACE_PROPERTY_NAME] = new Map();
 }
 
 if (document instanceof Document) {
