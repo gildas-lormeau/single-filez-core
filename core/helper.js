@@ -311,6 +311,21 @@ function getResourcesInfo(win, doc, element, options, data, elementHidden, compu
 		element.setAttribute(IMAGE_ATTRIBUTE_NAME, data.images.length - 1);
 		data.markedElements.push(element);
 		element.removeAttribute(LAZY_SRC_ATTRIBUTE_NAME);
+		computedStyle = computedStyle || getComputedStyle(win, element);
+		if (computedStyle) {
+			imageData.size = getSize(win, element, computedStyle);
+			const boxShadow = computedStyle.getPropertyValue("box-shadow");
+			const backgroundImage = computedStyle.getPropertyValue("background-image");
+			if ((!boxShadow || boxShadow == "none") &&
+				(!backgroundImage || backgroundImage == "none") &&
+				(imageData.size.pxWidth > 1 || imageData.size.pxHeight > 1)) {
+				imageData.replaceable = true;
+				imageData.backgroundColor = computedStyle.getPropertyValue("background-color");
+				imageData.objectFit = computedStyle.getPropertyValue("object-fit");
+				imageData.boxSizing = computedStyle.getPropertyValue("box-sizing");
+				imageData.objectPosition = computedStyle.getPropertyValue("object-position");
+			}
+		}
 	}
 	if (tagName == "VIDEO") {
 		const src = element.currentSrc;
@@ -493,6 +508,55 @@ function getStylesheetsData(doc) {
 			}
 		});
 		return contents;
+	}
+}
+
+function getSize(win, imageElement, computedStyle) {
+	let pxWidth = imageElement.naturalWidth;
+	let pxHeight = imageElement.naturalHeight;
+	if (!pxWidth && !pxHeight) {
+		const noStyleAttribute = imageElement.getAttribute("style") == null;
+		computedStyle = computedStyle || getComputedStyle(win, imageElement);
+		if (computedStyle) {
+			let removeBorderWidth = false;
+			if (computedStyle.getPropertyValue("box-sizing") == "content-box") {
+				const boxSizingValue = imageElement.style.getPropertyValue("box-sizing");
+				const boxSizingPriority = imageElement.style.getPropertyPriority("box-sizing");
+				const clientWidth = imageElement.clientWidth;
+				imageElement.style.setProperty("box-sizing", "border-box", "important");
+				removeBorderWidth = imageElement.clientWidth != clientWidth;
+				if (boxSizingValue) {
+					imageElement.style.setProperty("box-sizing", boxSizingValue, boxSizingPriority);
+				} else {
+					imageElement.style.removeProperty("box-sizing");
+				}
+			}
+			let paddingLeft, paddingRight, paddingTop, paddingBottom, borderLeft, borderRight, borderTop, borderBottom;
+			paddingLeft = getWidth("padding-left", computedStyle);
+			paddingRight = getWidth("padding-right", computedStyle);
+			paddingTop = getWidth("padding-top", computedStyle);
+			paddingBottom = getWidth("padding-bottom", computedStyle);
+			if (removeBorderWidth) {
+				borderLeft = getWidth("border-left-width", computedStyle);
+				borderRight = getWidth("border-right-width", computedStyle);
+				borderTop = getWidth("border-top-width", computedStyle);
+				borderBottom = getWidth("border-bottom-width", computedStyle);
+			} else {
+				borderLeft = borderRight = borderTop = borderBottom = 0;
+			}
+			pxWidth = Math.max(0, imageElement.clientWidth - paddingLeft - paddingRight - borderLeft - borderRight);
+			pxHeight = Math.max(0, imageElement.clientHeight - paddingTop - paddingBottom - borderTop - borderBottom);
+			if (noStyleAttribute) {
+				imageElement.removeAttribute("style");
+			}
+		}
+	}
+	return { pxWidth, pxHeight };
+}
+
+function getWidth(styleName, computedStyle) {
+	if (computedStyle.getPropertyValue(styleName).endsWith("px")) {
+		return parseFloat(computedStyle.getPropertyValue(styleName));
 	}
 }
 
