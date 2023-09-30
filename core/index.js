@@ -1259,12 +1259,12 @@ class Processor {
 						networkTimeout: this.options.networkTimeout
 					});
 					const name = "scripts/" + this.resources.scripts.size + ".js";
+					this.resources.scripts.set(this.resources.scripts.size, { name, content: content.data, url: resourceURL });
 					content.data = getUpdatedResourceContent(resourceURL, content, this.options);
 					element.setAttribute("src", name);
 					if (element.getAttribute("async") == "async" || element.getAttribute(util.ASYNC_SCRIPT_ATTRIBUTE_NAME) == "") {
 						element.setAttribute("async", "");
 					}
-					this.resources.scripts.set(this.resources.scripts.size, { name, content: content.data, url: resourceURL });
 				}
 			} else {
 				element.removeAttribute("src");
