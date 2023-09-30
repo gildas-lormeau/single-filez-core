@@ -554,16 +554,13 @@ class Processor {
 		}
 		const filename = await util.formatFilename(content, this.options);
 		const matchTitle = this.baseURI.match(/([^/]*)\/?(\.html?.*)$/) || this.baseURI.match(/\/\/([^/]*)\/?$/);
-		const { resources, viewport, doctype } = this.processorHelper.getAdditionalPageData(this.doc, content, this.resources);
-		const pageData = {
+		const additionalData = this.processorHelper.getAdditionalPageData(this.doc, content, this.resources);
+		const pageData = Object.assign({
 			stats: this.stats.data,
 			title: this.options.title || (this.baseURI && matchTitle ? matchTitle[1] : url.hostname ? url.hostname : ""),
 			filename,
-			content,
-			resources,
-			viewport,
-			doctype
-		};
+			content
+		}, additionalData);
 		if (this.options.retrieveLinks) {
 			pageData.links = Array.from(new Set(Array.from(this.doc.links).map(linkElement => linkElement.href)));
 		}
