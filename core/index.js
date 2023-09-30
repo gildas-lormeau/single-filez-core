@@ -1248,22 +1248,7 @@ class Processor {
 				}
 				if (testValidURL(resourceURL)) {
 					element.removeAttribute("src");
-					const content = await util.getContent(resourceURL, {
-						charset: this.charset != UTF8_CHARSET && this.charset,
-						maxResourceSize: this.options.maxResourceSize,
-						maxResourceSizeEnabled: this.options.maxResourceSizeEnabled,
-						frameId: this.options.windowId,
-						resourceReferrer: this.options.resourceReferrer,
-						baseURI: this.options.baseURI,
-						blockMixedContent: this.options.blockMixedContent,
-						expectedType: "script",
-						acceptHeaders: this.options.acceptHeaders,
-						networkTimeout: this.options.networkTimeout
-					});
-					const name = "scripts/" + this.resources.scripts.size + ".js";
-					this.resources.scripts.set(this.resources.scripts.size, { name, content: content.data, url: resourceURL });
-					content.data = getUpdatedResourceContent(resourceURL, content, this.options);
-					element.setAttribute("src", name);
+					await this.processorHelper.processScript(element, resourceURL);
 					if (element.getAttribute("async") == "async" || element.getAttribute(util.ASYNC_SCRIPT_ATTRIBUTE_NAME) == "") {
 						element.setAttribute("async", "");
 					}
@@ -1414,15 +1399,6 @@ const HTTP_URI_PREFIX = /^https?:\/\//;
 const FILE_URI_PREFIX = /^file:\/\//;
 const EMPTY_URL = /^https?:\/\/+\s*$/;
 const NOT_EMPTY_URL = /^(https?:\/\/|file:\/\/|blob:).+/;
-
-function getUpdatedResourceContent(resourceURL, content, options) {
-	if (options.rootDocument && options.updatedResources[resourceURL]) {
-		options.updatedResources[resourceURL].retrieved = true;
-		return options.updatedResources[resourceURL].content;
-	} else {
-		return content.data || "";
-	}
-}
 
 function normalizeURL(url) {
 	if (!url || url.startsWith(DATA_URI_PREFIX)) {
