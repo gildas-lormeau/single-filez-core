@@ -54,7 +54,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 	const ProcessorHelperCommon = getProcessorHelperCommonClass(util, cssTree);
 
 	return class ProcessorHelper extends ProcessorHelperCommon {
-		static async processPageResources(doc, baseURI, options, resources, batchRequest) {
+		async processPageResources(doc, baseURI, options, resources, batchRequest) {
 			const processAttributeArgs = [
 				["link[href][rel*=\"icon\"]", "href", true],
 				["object[type=\"image/svg+xml\"], object[type=\"image/svg-xml\"], object[data*=\".svg\"]", "data"],
@@ -69,24 +69,24 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 				doc.querySelectorAll("svg").forEach(element => element.remove());
 			}
 			let resourcePromises = processAttributeArgs.map(([selector, attributeName, removeElementIfMissing]) =>
-				ProcessorHelper.processAttribute(doc.querySelectorAll(selector), attributeName, baseURI, options, "image", resources, batchRequest, removeElementIfMissing)
+				this.processAttribute(doc.querySelectorAll(selector), attributeName, baseURI, options, "image", resources, batchRequest, removeElementIfMissing)
 			);
 			resourcePromises = resourcePromises.concat([
-				ProcessorHelper.processXLinks(doc.querySelectorAll("use"), doc, baseURI, options, batchRequest),
-				ProcessorHelper.processSrcset(doc.querySelectorAll("img[srcset], source[srcset]"), baseURI, options, resources, batchRequest)
+				this.processXLinks(doc.querySelectorAll("use"), doc, baseURI, options, batchRequest),
+				this.processSrcset(doc.querySelectorAll("img[srcset], source[srcset]"), baseURI, options, resources, batchRequest)
 			]);
-			resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("object[data*=\".pdf\"]"), "data", baseURI, options, null, resources, batchRequest));
-			resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("embed[src*=\".pdf\"]"), "src", baseURI, options, null, resources, batchRequest));
-			resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("audio[src], audio > source[src]"), "src", baseURI, options, "audio", resources, batchRequest));
-			resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("video[src], video > source[src]"), "src", baseURI, options, "video", resources, batchRequest));
-			resourcePromises.push(ProcessorHelper.processAttribute(doc.querySelectorAll("model[src]"), "src", baseURI, options, null, resources, batchRequest));
+			resourcePromises.push(this.processAttribute(doc.querySelectorAll("object[data*=\".pdf\"]"), "data", baseURI, options, null, resources, batchRequest));
+			resourcePromises.push(this.processAttribute(doc.querySelectorAll("embed[src*=\".pdf\"]"), "src", baseURI, options, null, resources, batchRequest));
+			resourcePromises.push(this.processAttribute(doc.querySelectorAll("audio[src], audio > source[src]"), "src", baseURI, options, "audio", resources, batchRequest));
+			resourcePromises.push(this.processAttribute(doc.querySelectorAll("video[src], video > source[src]"), "src", baseURI, options, "video", resources, batchRequest));
+			resourcePromises.push(this.processAttribute(doc.querySelectorAll("model[src]"), "src", baseURI, options, null, resources, batchRequest));
 			await Promise.all(resourcePromises);
 			if (options.saveFavicon) {
-				ProcessorHelper.processShortcutIcons(doc);
+				this.processShortcutIcons(doc);
 			}
 		}
 
-		static async processLinkElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
+		async processLinkElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
 			if (element.tagName.toUpperCase() == "LINK") {
 				element.removeAttribute("integrity");
 				if (element.charset) {
@@ -94,10 +94,10 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 				}
 				stylesheetInfo.url = element.href;
 			}
-			await ProcessorHelper.processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources);
+			await this.processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources);
 		}
 
-		static async processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
+		async processStylesheetElement(element, stylesheetInfo, stylesheets, baseURI, options, workStyleElement, resources) {
 			if (options.blockStylesheets) {
 				if (element.tagName.toUpperCase() == "LINK") {
 					element.href = util.EMPTY_RESOURCE;
@@ -106,16 +106,16 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 				}
 			} else {
 				if (element.tagName.toUpperCase() == "LINK") {
-					await ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, element.href, baseURI, options, workStyleElement, resources, stylesheets);
+					await this.resolveLinkStylesheetURLs(stylesheetInfo, element, element.href, baseURI, options, workStyleElement, resources, stylesheets);
 				} else {
 					stylesheets.set({ element }, stylesheetInfo);
 					stylesheetInfo.stylesheet = cssTree.parse(element.textContent, { context: "stylesheet", parseCustomProperty: true });
-					await ProcessorHelper.resolveImportURLs(stylesheetInfo, baseURI, options, workStyleElement, resources, stylesheets);
+					await this.resolveImportURLs(stylesheetInfo, baseURI, options, workStyleElement, resources, stylesheets);
 				}
 			}
 		}
 
-		static replaceStylesheets(stylesheets, resources, options) {
+		replaceStylesheets(stylesheets, resources, options) {
 			for (const [key, stylesheetInfo] of stylesheets) {
 				if (key.urlNode) {
 					const name = "stylesheet_" + resources.stylesheets.size + ".css";
@@ -124,7 +124,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 					} else {
 						key.urlNode.value = name;
 					}
-					resources.stylesheets.set(resources.stylesheets.size, { name, content: ProcessorHelper.generateStylesheetContent(stylesheetInfo.stylesheet, options), url: stylesheetInfo.url });
+					resources.stylesheets.set(resources.stylesheets.size, { name, content: this.generateStylesheetContent(stylesheetInfo.stylesheet, options), url: stylesheetInfo.url });
 				}
 			}
 			for (const [key, stylesheetInfo] of stylesheets) {
@@ -133,19 +133,19 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 						const linkElement = key.element;
 						const name = "stylesheet_" + resources.stylesheets.size + ".css";
 						linkElement.setAttribute("href", name);
-						resources.stylesheets.set(resources.stylesheets.size, { name, content: ProcessorHelper.generateStylesheetContent(stylesheetInfo.stylesheet, options), url: stylesheetInfo.url });
+						resources.stylesheets.set(resources.stylesheets.size, { name, content: this.generateStylesheetContent(stylesheetInfo.stylesheet, options), url: stylesheetInfo.url });
 					} else {
 						const styleElement = key.element;
-						styleElement.textContent = ProcessorHelper.generateStylesheetContent(stylesheetInfo.stylesheet, options);
+						styleElement.textContent = this.generateStylesheetContent(stylesheetInfo.stylesheet, options);
 					}
 				}
 			}
 		}
 
-		static async resolveImportURLs(stylesheetInfo, baseURI, options, workStylesheet, resources, stylesheets) {
+		async resolveImportURLs(stylesheetInfo, baseURI, options, workStylesheet, resources, stylesheets) {
 			const stylesheet = stylesheetInfo.stylesheet;
 			const scoped = stylesheetInfo.scoped;
-			ProcessorHelper.resolveStylesheetURLs(stylesheet, baseURI, workStylesheet);
+			this.resolveStylesheetURLs(stylesheet, baseURI, workStylesheet);
 			const imports = getImportFunctions(stylesheet);
 			await Promise.all(imports.map(async node => {
 				const urlNode = cssTree.find(node, node => node.type == "Url") || cssTree.find(node, node => node.type == "String");
@@ -176,7 +176,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 									mediaText
 								};
 								stylesheets.set({ urlNode }, stylesheetInfo);
-								const content = await ProcessorHelper.getStylesheetContent(resourceURL, options);
+								const content = await this.getStylesheetContent(resourceURL, options);
 								stylesheetInfo.url = resourceURL = content.resourceURL;
 								const existingStylesheet = Array.from(stylesheets).find(([, stylesheetInfo]) => stylesheetInfo.resourceURL == resourceURL);
 								if (existingStylesheet) {
@@ -184,7 +184,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 								} else {
 									content.data = getUpdatedResourceContent(resourceURL, content, options);
 									stylesheetInfo.stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
-									await ProcessorHelper.resolveImportURLs(stylesheetInfo, resourceURL, options, workStylesheet, resources, stylesheets);
+									await this.resolveImportURLs(stylesheetInfo, resourceURL, options, workStylesheet, resources, stylesheets);
 								}
 							}
 						}
@@ -193,7 +193,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 			}));
 		}
 
-		static async resolveLinkStylesheetURLs(stylesheetInfo, element, resourceURL, baseURI, options, workStylesheet, resources, stylesheets) {
+		async resolveLinkStylesheetURLs(stylesheetInfo, element, resourceURL, baseURI, options, workStylesheet, resources, stylesheets) {
 			resourceURL = normalizeURL(resourceURL);
 			if (resourceURL && resourceURL != baseURI && resourceURL != ABOUT_BLANK_URI) {
 				const existingStylesheet = Array.from(stylesheets).find(([, otherStylesheetInfo]) => otherStylesheetInfo.resourceURL == resourceURL);
@@ -220,7 +220,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 					});
 					if (!(matchCharsetEquals(content.data, content.charset) || matchCharsetEquals(content.data, options.charset))) {
 						options = Object.assign({}, options, { charset: getCharset(content.data) });
-						ProcessorHelper.resolveLinkStylesheetURLs(stylesheetInfo, element, resourceURL, baseURI, options, workStylesheet, resources, stylesheets);
+						this.resolveLinkStylesheetURLs(stylesheetInfo, element, resourceURL, baseURI, options, workStylesheet, resources, stylesheets);
 					}
 					resourceURL = content.resourceURL;
 					if (existingStylesheet) {
@@ -232,13 +232,13 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 					} else {
 						content.data = getUpdatedResourceContent(content.resourceURL, content, options);
 						stylesheetInfo.stylesheet = cssTree.parse(content.data, { context: "stylesheet", parseCustomProperty: true });
-						await ProcessorHelper.resolveImportURLs(stylesheetInfo, resourceURL, options, workStylesheet, resources, stylesheets);
+						await this.resolveImportURLs(stylesheetInfo, resourceURL, options, workStylesheet, resources, stylesheets);
 					}
 				}
 			}
 		}
 
-		static async processFrame(frameElement, pageData, resources, frameWindowId, frameData) {
+		async processFrame(frameElement, pageData, resources, frameWindowId, frameData) {
 			const name = "frames/" + resources.frames.size + "/";
 			if (frameElement.tagName.toUpperCase() == "OBJECT") {
 				frameElement.setAttribute("data", name + "index.html");
@@ -248,7 +248,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 			resources.frames.set(frameWindowId, { name, content: pageData.content, resources: pageData.resources, url: frameData.url });
 		}
 
-		static async processStylesheet(cssRules, baseURI, options, resources, batchRequest) {
+		async processStylesheet(cssRules, baseURI, options, resources, batchRequest) {
 			const promises = [];
 			const removedRules = [];
 			for (let cssRule = cssRules.head; cssRule; cssRule = cssRule.next) {
@@ -257,9 +257,9 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 					removedRules.push(cssRule);
 				} else if (ruleData.block && ruleData.block.children) {
 					if (ruleData.type == "Rule") {
-						promises.push(ProcessorHelper.processStyle(ruleData, options, resources, batchRequest));
+						promises.push(this.processStyle(ruleData, options, resources, batchRequest));
 					} else if (ruleData.type == "Atrule" && (ruleData.name == "media" || ruleData.name == "supports")) {
-						promises.push(ProcessorHelper.processStylesheet(ruleData.block.children, baseURI, options, resources, batchRequest));
+						promises.push(this.processStylesheet(ruleData.block.children, baseURI, options, resources, batchRequest));
 					} else if (ruleData.type == "Atrule" && ruleData.name == "font-face") {
 						promises.push(processFontFaceRule(ruleData));
 					}
@@ -292,7 +292,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 			}
 		}
 
-		static async processStyle(ruleData, options, resources, batchRequest) {
+		async processStyle(ruleData, options, resources, batchRequest) {
 			const urls = getUrlFunctions(ruleData);
 			await Promise.all(urls.map(async urlNode => {
 				const originalResourceURL = urlNode.value;
@@ -315,7 +315,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 			}));
 		}
 
-		static async processAttribute(resourceElements, attributeName, baseURI, options, expectedType, resources, batchRequest, removeElementIfMissing) {
+		async processAttribute(resourceElements, attributeName, baseURI, options, expectedType, resources, batchRequest, removeElementIfMissing) {
 			await Promise.all(Array.from(resourceElements).map(async resourceElement => {
 				let resourceURL = resourceElement.getAttribute(attributeName);
 				if (resourceURL != null) {
@@ -338,7 +338,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 									let { content, indexResource, extension, contentType } = await batchRequest.addURL(resourceURL,
 										{ asBinary: true, expectedType });
 									if (originURL) {
-										if (ProcessorHelper.testEmptyResource(content)) {
+										if (this.testEmptyResource(content)) {
 											try {
 												originURL = util.resolveURL(originURL, baseURI);
 											} catch (error) {
@@ -361,9 +361,9 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 											}
 										}
 									}
-									if (removeElementIfMissing && ProcessorHelper.testEmptyResource(content)) {
+									if (removeElementIfMissing && this.testEmptyResource(content)) {
 										resourceElement.remove();
-									} else if (!ProcessorHelper.testEmptyResource(content)) {
+									} else if (!this.testEmptyResource(content)) {
 										const name = "images/" + indexResource + extension;
 										resourceElement.setAttribute(attributeName, name);
 										resources.images.set(indexResource, { name, content, extension, contentType, url: resourceURL });
@@ -386,7 +386,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 			}
 		}
 
-		static async processSrcset(resourceElements, baseURI, options, resources, batchRequest) {
+		async processSrcset(resourceElements, baseURI, options, resources, batchRequest) {
 			await Promise.all(Array.from(resourceElements).map(async resourceElement => {
 				const originSrcset = resourceElement.getAttribute("srcset");
 				const srcset = util.parseSrcset(originSrcset);
@@ -425,15 +425,15 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 			}));
 		}
 
-		static testEmptyResource(resource) {
+		testEmptyResource(resource) {
 			return !resource;
 		}
 
-		static generateStylesheetContent(stylesheet, options) {
+		generateStylesheetContent(stylesheet, options) {
 			if (options.compressCSS) {
-				ProcessorHelper.removeSingleLineCssComments(stylesheet);
+				this.removeSingleLineCssComments(stylesheet);
 			}
-			ProcessorHelper.replacePseudoClassDefined(stylesheet);
+			this.replacePseudoClassDefined(stylesheet);
 			let stylesheetContent = cssTree.generate(stylesheet);
 			if (options.compressCSS) {
 				stylesheetContent = util.compressCSS(stylesheetContent);
@@ -444,7 +444,7 @@ function getProcessorHelperClass(utilInstance, cssTreeInstance) {
 			return stylesheetContent;
 		}
 
-		static getAdditionalPageData(doc, content, pageResources) {
+		getAdditionalPageData(doc, content, pageResources) {
 			const resources = {};
 			let textContent = content;
 			pageResources.stylesheets.forEach(resource => textContent += resource.content);

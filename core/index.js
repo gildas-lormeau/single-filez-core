@@ -31,7 +31,7 @@ const Set = globalThis.Set;
 const Map = globalThis.Map;
 const JSON = globalThis.JSON;
 
-let util, cssTree, ProcessorHelper;
+let util, cssTree;
 
 export {
 	getClass
@@ -39,20 +39,22 @@ export {
 
 function getClass(...args) {
 	[util, cssTree] = args;
-	ProcessorHelper = getProcessorHelperClass(util, cssTree);
+	const ProcessorHelper = getProcessorHelperClass(util, cssTree);
+	SingleFileClass.ProcessorHelper = ProcessorHelper;
 	return SingleFileClass;
 }
 
 class SingleFileClass {
 	constructor(options) {
 		this.options = options;
+		this.processorHelper = new SingleFileClass.ProcessorHelper();
 	}
 	async run() {
 		const waitForUserScript = globalThis[util.WAIT_FOR_USERSCRIPT_PROPERTY_NAME];
 		if (this.options.userScriptEnabled && waitForUserScript) {
 			await waitForUserScript(util.ON_BEFORE_CAPTURE_EVENT_NAME);
 		}
-		this.runner = new Runner(this.options, true);
+		this.runner = new Runner(this.options, this.processorHelper, true);
 		await this.runner.loadPage();
 		await this.runner.initialize();
 		if (this.options.userScriptEnabled && waitForUserScript) {
@@ -161,7 +163,7 @@ const STAGES = [{
 }];
 
 class Runner {
-	constructor(options, root) {
+	constructor(options, processorHelper, root) {
 		const rootDocDefined = root && options.doc;
 		this.root = root;
 		this.options = options;
@@ -173,7 +175,7 @@ class Runner {
 		this.options.updatedResources = this.options.updatedResources || {};
 		this.options.fontTests = new Map();
 		this.batchRequest = new BatchRequest();
-		this.processor = new Processor(options, this.batchRequest);
+		this.processor = new Processor(options, processorHelper, this.batchRequest);
 		if (rootDocDefined) {
 			const docData = util.preProcessDoc(this.options.doc, this.options.win, this.options);
 			this.options.canvases = docData.canvases;
@@ -393,8 +395,9 @@ const SCRIPT_TEMPLATE_SHADOW_ROOT = "data-template-shadow-root";
 const UTF8_CHARSET = "utf-8";
 
 class Processor {
-	constructor(options, batchRequest) {
+	constructor(options, processorHelper, batchRequest) {
 		this.options = options;
+		this.processorHelper = processorHelper;
 		this.stats = new Stats(options);
 		this.baseURI = normalizeURL(options.baseURI || options.url);
 		this.batchRequest = batchRequest;
@@ -549,7 +552,7 @@ class Processor {
 		}
 		const filename = await util.formatFilename(content, this.options);
 		const matchTitle = this.baseURI.match(/([^/]*)\/?(\.html?.*)$/) || this.baseURI.match(/\/\/([^/]*)\/?$/);
-		const { resources, viewport, doctype } = ProcessorHelper.getAdditionalPageData(this.doc, content, this.resources);
+		const { resources, viewport, doctype } = this.processorHelper.getAdditionalPageData(this.doc, content, this.resources);
 		const pageData = {
 			stats: this.stats.data,
 			title: this.options.title || (this.baseURI && matchTitle ? matchTitle[1] : url.hostname ? url.hostname : ""),
@@ -907,7 +910,7 @@ class Processor {
 						if (canvasData.backgroundColor) {
 							backgroundStyle["background-color"] = canvasData.backgroundColor;
 						}
-						ProcessorHelper.setBackgroundImage(canvasElement, "url(" + canvasData.dataURI + ")", backgroundStyle);
+						this.processorHelper.setBackgroundImage(canvasElement, "url(" + canvasData.dataURI + ")", backgroundStyle);
 						this.stats.add("processed", "canvas", 1);
 					}
 				}
@@ -1051,7 +1054,7 @@ class Processor {
 			} else {
 				const styleContent = element.getAttribute("style");
 				const declarationList = cssTree.parse(styleContent, { context: "declarationList", parseCustomProperty: true });
-				ProcessorHelper.resolveStylesheetURLs(declarationList, this.baseURI, this.workStyleElement);
+				this.processorHelper.resolveStylesheetURLs(declarationList, this.baseURI, this.workStyleElement);
 				this.styles.set(element, declarationList);
 			}
 		});
@@ -1069,7 +1072,7 @@ class Processor {
 				mediaText,
 				scoped
 			};
-			await ProcessorHelper.processLinkElement(element, stylesheetInfo, this.stylesheets, this.baseURI, options, this.workStyleElement, this.resources);
+			await this.processorHelper.processLinkElement(element, stylesheetInfo, this.stylesheets, this.baseURI, options, this.workStyleElement, this.resources);
 		}));
 		if (this.options.rootDocument) {
 			const newResources = Object.keys(this.options.updatedResources)
@@ -1082,13 +1085,14 @@ class Processor {
 					const element = this.doc.createElement("style");
 					this.doc.body.appendChild(element);
 					element.textContent = resource.content;
-					await ProcessorHelper.processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, this.options, this.workStyleElement, this.resources);
+					await this.processorHelper.processStylesheetElement(element, stylesheetInfo, this.stylesheets, this.baseURI, this.options, this.workStyleElement, this.resources);
 				}
 			}));
 		}
 	}
 
 	async resolveFrameURLs() {
+		const processorHelper = this.processorHelper;
 		if (!this.options.saveRawPage) {
 			const frameElements = Array.from(this.doc.querySelectorAll("iframe, frame, object[type=\"text/html\"][data]"));
 			await Promise.all(frameElements.map(async frameElement => {
@@ -1134,7 +1138,7 @@ class Processor {
 				options.scrollPosition = frameData.scrollPosition;
 				options.scrolling = frameData.scrolling;
 				options.adoptedStyleSheets = frameData.adoptedStyleSheets;
-				frameData.runner = new Runner(options);
+				frameData.runner = new Runner(options, processorHelper);
 				frameData.frameElement = frameElement;
 				await frameData.runner.loadPage();
 				await frameData.runner.initialize();
@@ -1210,18 +1214,18 @@ class Processor {
 
 	async processStylesheets() {
 		await Promise.all([...this.stylesheets].map(([, stylesheetInfo]) =>
-			ProcessorHelper.processStylesheet(stylesheetInfo.stylesheet.children, this.baseURI, this.options, this.resources, this.batchRequest)
+			this.processorHelper.processStylesheet(stylesheetInfo.stylesheet.children, this.baseURI, this.options, this.resources, this.batchRequest)
 		));
 	}
 
 	async processStyleAttributes() {
 		return Promise.all([...this.styles].map(([, stylesheet]) =>
-			ProcessorHelper.processStyle(stylesheet, this.options, this.resources, this.batchRequest)
+			this.processorHelper.processStyle(stylesheet, this.options, this.resources, this.batchRequest)
 		));
 	}
 
 	async processPageResources() {
-		await ProcessorHelper.processPageResources(this.doc, this.baseURI, this.options, this.resources, this.batchRequest);
+		await this.processorHelper.processPageResources(this.doc, this.baseURI, this.options, this.resources, this.batchRequest);
 	}
 
 	async processScripts() {
@@ -1291,7 +1295,7 @@ class Processor {
 							await frameData.runner.run();
 							const pageData = await frameData.runner.getPageData();
 							frameElement.removeAttribute(util.WIN_ID_ATTRIBUTE_NAME);
-							ProcessorHelper.processFrame(frameElement, pageData, this.resources, frameWindowId, frameData);
+							this.processorHelper.processFrame(frameElement, pageData, this.resources, frameWindowId, frameData);
 							this.stats.addAll(pageData);
 						} else {
 							frameElement.removeAttribute(util.WIN_ID_ATTRIBUTE_NAME);
@@ -1304,7 +1308,7 @@ class Processor {
 	}
 
 	replaceStylesheets() {
-		ProcessorHelper.replaceStylesheets(this.stylesheets, this.resources, this.options);
+		this.processorHelper.replaceStylesheets(this.stylesheets, this.resources, this.options);
 	}
 
 	replaceStyleAttributes() {
@@ -1312,7 +1316,7 @@ class Processor {
 			const declarationList = this.styles.get(element);
 			if (declarationList) {
 				this.styles.delete(element);
-				element.setAttribute("style", ProcessorHelper.generateStylesheetContent(declarationList, this.options));
+				element.setAttribute("style", this.processorHelper.generateStylesheetContent(declarationList, this.options));
 			} else {
 				element.setAttribute("style", "");
 			}
