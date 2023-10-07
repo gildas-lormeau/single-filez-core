@@ -119,7 +119,7 @@ async function process(pageData, options, lastModDate = new Date()) {
 			extraData += extraTags + new Array(options.extraDataSize - extraTags.length).fill(" ").join("");
 		}
 		pageContent += extraData;
-		const startTag = options.extractDataFromPageTags ? options.extractDataFromPageTags[0] : "<xmp>";
+		const startTag = options.extractDataFromPageTags ? options.extractDataFromPageTags[0] : "<!--";
 		pageContent += startTag;
 		extraDataOffset = startTag.length + extraData.length;
 		await writeData(zipDataWriter.writable, (new TextEncoder()).encode(pageContent));
@@ -134,7 +134,6 @@ async function process(pageData, options, lastModDate = new Date()) {
 		const insertionsCRLF = [];
 		const substitutionsLF = [];
 		if (options.extractDataFromPage) {
-			debugger;
 			if (!options.extractDataFromPageTags) {
 				const textContent = new TextDecoder().decode(data);
 				const matchEndTagComment = textContent.match(/-->/i);
