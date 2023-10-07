@@ -119,7 +119,7 @@ async function process(pageData, options, lastModDate = new Date()) {
 			extraData += extraTags + new Array(options.extraDataSize - extraTags.length).fill(" ").join("");
 		}
 		pageContent += extraData;
-		const startTag = options.extractDataFromPageTags ? options.extractDataFromPageTags[0] : "<!--";
+		const startTag = options.extractDataFromPageTags ? options.extractDataFromPageTags[0] : "<xmp>";
 		pageContent += startTag;
 		extraDataOffset = startTag.length + extraData.length;
 		await writeData(zipDataWriter.writable, (new TextEncoder()).encode(pageContent));
@@ -140,8 +140,14 @@ async function process(pageData, options, lastModDate = new Date()) {
 				if (matchEndTagComment) {
 					const matchEndTagXMP = textContent.match(/<\/\s*xmp>/i);
 					if (matchEndTagXMP) {
-						options.extractDataFromPage = false;
-						return process(pageData, options, lastModDate);
+						const matchEndTagPlainText = textContent.match(/<\/\s*plaintext>/i);
+						if (matchEndTagPlainText) {
+							options.extractDataFromPage = false;
+							return process(pageData, options, lastModDate);
+						} else {
+							options.extractDataFromPageTags = ["<plaintext>", "</plaintext>"];
+							return process(pageData, options, lastModDate);
+						}
 					} else {
 						options.extractDataFromPageTags = ["<xmp>", "</xmp>"];
 						return process(pageData, options, lastModDate);
@@ -162,7 +168,7 @@ async function process(pageData, options, lastModDate = new Date()) {
 		if (options.extractDataFromPageTags) {
 			pageContent += options.extractDataFromPageTags[1];
 		} else {
-			pageContent += "-->";
+			pageContent += "</xmp>";
 		}
 		const endTags = "</body></html>";
 		if (options.extractDataFromPage) {
