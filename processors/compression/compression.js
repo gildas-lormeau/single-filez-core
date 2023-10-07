@@ -134,6 +134,7 @@ async function process(pageData, options, lastModDate = new Date()) {
 		const insertionsCRLF = [];
 		const substitutionsLF = [];
 		if (options.extractDataFromPage) {
+			debugger;
 			if (!options.extractDataFromPageTags) {
 				const textContent = new TextDecoder().decode(data);
 				const matchEndTagComment = textContent.match(/-->/i);
@@ -168,7 +169,7 @@ async function process(pageData, options, lastModDate = new Date()) {
 		if (options.extractDataFromPageTags) {
 			pageContent += options.extractDataFromPageTags[1];
 		} else {
-			pageContent += "</xmp>";
+			pageContent += "-->";
 		}
 		const endTags = "</body></html>";
 		if (options.extractDataFromPage) {
