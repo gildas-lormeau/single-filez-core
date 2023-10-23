@@ -129,11 +129,11 @@ function getInstance(utilOptions) {
 		getContentSize(content) {
 			return new Blob([content]).size;
 		},
-		formatFilename(content, options) {
-			return modules.templateFormatter.formatFilename(content, options, this);
+		formatFilename(content, doc, options) {
+			return modules.templateFormatter.formatFilename(content, doc, options, this);
 		},
-		evalTemplate(template, options, content, dontReplaceSlash) {
-			return modules.templateFormatter.evalTemplate(template, options, this, content, dontReplaceSlash);
+		evalTemplate(template, options, content, doc, dontReplaceSlash) {
+			return modules.templateFormatter.evalTemplate(template, options, this, content, doc, dontReplaceSlash);
 		},
 		minifyHTML(doc, options) {
 			return modules.htmlMinifier.process(doc, options);

@@ -554,7 +554,7 @@ class Processor {
 			this.stats.set("processed", "HTML bytes", contentSize);
 			this.stats.add("discarded", "HTML bytes", size - contentSize);
 		}
-		const filename = await util.formatFilename(content, this.options);
+		const filename = await util.formatFilename(content, this.doc, this.options);
 		const matchTitle = this.baseURI.match(/([^/]*)\/?(\.html?.*)$/) || this.baseURI.match(/\/\/([^/]*)\/?$/);
 		const additionalData = this.processorHelper.getAdditionalPageData(this.doc, content, this.resources);
 		const pageData = Object.assign({
@@ -1383,7 +1383,7 @@ class Processor {
 			publisher: publisherElement && publisherElement.content ? publisherElement.content.trim() : "",
 			heading: headingElement && headingElement.textContent ? headingElement.textContent.trim() : ""
 		};
-		this.options.infobarContent = await util.evalTemplate(this.options.infobarTemplate, this.options, null, true);
+		this.options.infobarContent = await util.evalTemplate(this.options.infobarTemplate, this.options, null, this.doc, true);
 	}
 }
 
