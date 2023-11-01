@@ -117,12 +117,12 @@ async function process(pageData, options, lastModDate = new Date()) {
 		script = "<script>" +
 			script +
 			"document.currentScript.remove();" +
-			"globalThis.onload = () => {" +
-			"globalThis.bootstrap=(()=>{let bootstrapStarted;return async content=>{if (bootstrapStarted) return bootstrapStarted;bootstrapStarted = (" +
+			"globalThis.addEventListener('load', () => {" +
+			"globalThis.bootstrap=(()=>{let bootstrapStarted;return async content=>{if (bootstrapStarted) return bootstrapStarted; bootstrapStarted = (" +
 			extract.toString().replace(/\n|\t/g, "") + ")(content,{prompt}).then(({docContent}) => " +
 			display.toString().replace(/\n|\t/g, "") + "(document,docContent));return bootstrapStarted;}})();(" +
-			getContent.toString().replace(/\n|\t/g, "") + ")().then(globalThis.bootstrap).catch(()=>{});" +
-			"};" +
+			getContent.toString().replace(/\n|\t/g, "") + ")().then(globalThis.bootstrap).then(() => document.dispatchEvent(new CustomEvent(\"single-file-display-infobar\"))).catch(()=>{});" +
+			"});" +
 			"</script>";
 		pageContent += script;
 		let extraData = "";
