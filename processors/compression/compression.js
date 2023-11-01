@@ -38,6 +38,7 @@ import {
 } from "./compression-display.js";
 
 const { Blob, fetch, TextEncoder, DOMParser } = globalThis;
+
 const NO_COMPRESSION_EXTENSIONS = [".jpg", ".jpeg", ".png", ".pdf", ".woff2", ".mp4", ".mp3", ".ogg", ".webp", ".webm", ".avi", ".mpeg", ".ts", ".ogv"];
 const SCRIPT_PATH = "/lib/single-file-zip.min.js";
 const EXTRA_DATA_TAGS = [
@@ -88,7 +89,6 @@ async function process(pageData, options, lastModDate = new Date()) {
 		if (pageData.viewport) {
 			pageContent += "<meta name=\"viewport\" content=" + JSON.stringify(pageData.viewport) + ">";
 		}
-		pageContent += "<style>@keyframes display-wait-message{0%{opacity:0}100%{opacity:1}}</style>";
 		pageContent += "<body hidden>";
 		pageContent += "<div id='sfz-wait-message'>Please wait...</div>";
 		pageContent += "<div id='sfz-error-message'><strong>Error</strong>: Cannot open the page from the filesystem.";
@@ -117,11 +117,12 @@ async function process(pageData, options, lastModDate = new Date()) {
 		script = "<script>" +
 			script +
 			"document.currentScript.remove();" +
-			"globalThis.bootstrap=(()=>{let bootstrapStarted;return content=>{if (bootstrapStarted) return bootstrapStarted;bootstrapStarted=" +
-			"new Promise(resolve=>{document.readyState=='complete'?resolve():globalThis.onload=resolve}).then(()=>" +
-			extract.toString().replace(/\n|\t/g, "") + "(content,{prompt}).then(({docContent}) => " +
-			display.toString().replace(/\n|\t/g, "") + "(document,docContent)));return bootstrapStarted;}})();(" +
+			"globalThis.onload = () => {" +
+			"globalThis.bootstrap=(()=>{let bootstrapStarted;return async content=>{if (bootstrapStarted) return bootstrapStarted;bootstrapStarted = (" +
+			extract.toString().replace(/\n|\t/g, "") + ")(content,{prompt}).then(({docContent}) => " +
+			display.toString().replace(/\n|\t/g, "") + "(document,docContent));return bootstrapStarted;}})();(" +
 			getContent.toString().replace(/\n|\t/g, "") + ")().then(globalThis.bootstrap).catch(()=>{});" +
+			"};" +
 			"</script>";
 		pageContent += script;
 		let extraData = "";
@@ -277,41 +278,50 @@ async function addFile(zipWriter, prefixName, data) {
 }
 
 async function getContent() {
-	const { Blob, XMLHttpRequest, fetch, document, stop } = globalThis;
+	const { Blob, XMLHttpRequest, fetch, document, setTimeout, clearTimeout, stop } = globalThis;
 	const characterMap = new Map([
 		[65533, 0], [8364, 128], [8218, 130], [402, 131], [8222, 132], [8230, 133], [8224, 134], [8225, 135], [710, 136], [8240, 137],
 		[352, 138], [8249, 139], [338, 140], [381, 142], [8216, 145], [8217, 146], [8220, 147], [8221, 148], [8226, 149], [8211, 150],
 		[8212, 151], [732, 152], [8482, 153], [353, 154], [8250, 155], [339, 156], [382, 158], [376, 159]
 	]);
 	const xhr = new XMLHttpRequest();
+	let displayTimeout;
+	Array.from(document.documentElement.childNodes).forEach(node => {
+		if (node != document.body && node != document.head) {
+			node.remove();
+		}
+	});
 	xhr.responseType = "blob";
 	xhr.open("GET", "");
 	return new Promise((resolve, reject) => {
 		xhr.onerror = () => {
 			extractPageData().then(resolve).catch(() => {
-				displayMessage("sfz-error-message", 2);
+				displayTimeout = displayMessage("sfz-error-message");
 				reject();
 			});
 		};
 		xhr.send();
 		xhr.onload = () => {
+			displayTimeout = displayMessage("sfz-wait-message");
 			stop();
-			displayMessage("sfz-wait-message", 2);
+			if (displayTimeout) {
+				clearTimeout(displayTimeout);
+			}
 			resolve(xhr.response);
 		};
 	});
 
-	function displayMessage(elementId, delay = 0) {
-		const element = document.getElementById(elementId);
-		if (element) {
-			Array.from(document.body.childNodes).forEach(node => {
-				if (node.id != elementId) {
-					node.remove();
-				}
-			});
-			document.body.hidden = false;
-			element.style = "opacity: 0; animation: 0s linear " + delay + "s display-wait-message 1 normal forwards";
-		}
+	function displayMessage(elementId) {
+		return setTimeout(() => {
+			if (document.getElementById(elementId)) {
+				Array.from(document.body.childNodes).forEach(node => {
+					if (node.id != elementId) {
+						node.remove();
+					}
+				});
+				document.body.hidden = false;
+			}
+		}, 1500);
 	}
 
 	async function extractPageData() {
@@ -327,7 +337,6 @@ async function getContent() {
 			}
 			const zipData = [];
 			let { textContent } = dataNode;
-			displayMessage("sfz-wait-message", 2);
 			for (let index = 0; index < textContent.length; index++) {
 				const charCode = textContent.charCodeAt(index);
 				zipData.push(charCode > 255 ? characterMap.get(charCode) : charCode);
