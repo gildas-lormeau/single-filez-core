@@ -69,6 +69,7 @@ class ProcessorHelperCommon {
 
 	async getStylesheetContent(resourceURL, options) {
 		const content = await util.getContent(resourceURL, {
+			inline: !options.compressContent,
 			maxResourceSize: options.maxResourceSize,
 			maxResourceSizeEnabled: options.maxResourceSizeEnabled,
 			validateTextContentType: true,
@@ -84,6 +85,7 @@ class ProcessorHelperCommon {
 		if (!(matchCharsetEquals(content.data, content.charset) || matchCharsetEquals(content.data, options.charset))) {
 			options = Object.assign({}, options, { charset: getCharset(content.data) });
 			return util.getContent(resourceURL, {
+				inline: !options.compressContent,
 				maxResourceSize: options.maxResourceSize,
 				maxResourceSizeEnabled: options.maxResourceSizeEnabled,
 				validateTextContentType: true,
@@ -249,6 +251,43 @@ class ProcessorHelperCommon {
 				resourceElement.setAttribute(attributeName, util.EMPTY_RESOURCE);
 			}
 		}));
+	}
+
+	async processStylesheet(cssRules, baseURI, options, resources, batchRequest) {
+		const promises = [];
+		const removedRules = [];
+		const processorHelper = this;
+		for (let cssRule = cssRules.head; cssRule; cssRule = cssRule.next) {
+			const ruleData = cssRule.data;
+			if (ruleData.type == "Atrule" && ruleData.name == "charset") {
+				removedRules.push(cssRule);
+			} else if (ruleData.block && ruleData.block.children) {
+				if (ruleData.type == "Rule") {
+					promises.push(processorHelper.processStyle(ruleData, options, resources, batchRequest));
+				} else if (ruleData.type == "Atrule" && (ruleData.name == "media" || ruleData.name == "supports")) {
+					promises.push(processorHelper.processStylesheet(ruleData.block.children, baseURI, options, resources, batchRequest));
+				} else if (ruleData.type == "Atrule" && ruleData.name == "font-face") {
+					promises.push(processFontFaceRule(ruleData));
+				}
+			}
+		}
+		removedRules.forEach(cssRule => cssRules.remove(cssRule));
+		await Promise.all(promises);
+
+		async function processFontFaceRule(ruleData) {
+			const urls = getUrlFunctions(ruleData);
+			await Promise.all(urls.map(async urlNode => {
+				const originalResourceURL = urlNode.value;
+				if (!options.blockFonts) {
+					const resourceURL = normalizeURL(originalResourceURL);
+					if (!testIgnoredPath(resourceURL) && testValidURL(resourceURL)) {
+						await processorHelper.processFont(resourceURL, urlNode, originalResourceURL, baseURI, options, resources, batchRequest);
+					}
+				} else {
+					urlNode.value = util.EMPTY_RESOURCE;
+				}
+			}));
+		}
 	}
 }
 
