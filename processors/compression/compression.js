@@ -201,7 +201,7 @@ async function prependHTMLData(pageData, zipDataWriter, script, options) {
 		"globalThis.bootstrap=(()=>{let bootstrapStarted;return async content=>{if (bootstrapStarted) return bootstrapStarted; bootstrapStarted = (" +
 		extract.toString().replace(/\n|\t/g, "") + ")(content,{prompt}).then(({docContent}) => " +
 		display.toString().replace(/\n|\t/g, "") + "(document,docContent));return bootstrapStarted;}})();(" +
-		getContent.toString().replace(/\n|\t/g, "") + ")().then(globalThis.bootstrap).then(() => document.dispatchEvent(new CustomEvent(\"single-file-display-infobar\"))).catch(()=>{});" +
+		getContent.toString().replace(/\n|\t/g, "") + ")().then(globalThis.bootstrap).then(() => document.dispatchEvent(new CustomEvent(\"single-filez-display-infobar\"))).catch(()=>{});" +
 		"});" +
 		"</script>";
 	pageContent += script;
