@@ -21,7 +21,7 @@
  *   Source.
  */
 
-/* global globalThis, CustomEvent */
+/* global globalThis */
 
 import * as cssUnescape from "./../vendor/css-unescape.js";
 import * as hooksFrames from "./../processors/hooks/content/content-hooks-frames.js";
@@ -70,12 +70,17 @@ const FONT_WEIGHTS = {
 	bolder: "700",
 	lighter: "100"
 };
+const COMMENT_HEADER_LEGACY = "Archive processed by SingleFile";
 const SINGLE_FILE_UI_ELEMENT_CLASS = "single-file-ui-element";
 const INFOBAR_TAGNAME = infobar.INFOBAR_TAGNAME;
 const EMPTY_RESOURCE = "data:,";
 const addEventListener = (type, listener, options) => globalThis.addEventListener(type, listener, options);
 const dispatchEvent = event => { try { globalThis.dispatchEvent(event); } catch (error) {  /* ignored */ } };
 const JSON = globalThis.JSON;
+const crypto = globalThis.crypto;
+const TextEncoder = globalThis.TextEncoder;
+const Blob = globalThis.Blob;
+const CustomEvent = globalThis.CustomEvent;
 
 export {
 	initUserScriptHandler,
@@ -89,6 +94,8 @@ export {
 	normalizeFontFamily,
 	getShadowRoot,
 	appendInfobar,
+	getContentSize,
+	digest,
 	ON_BEFORE_CAPTURE_EVENT_NAME,
 	ON_AFTER_CAPTURE_EVENT_NAME,
 	WIN_ID_ATTRIBUTE_NAME,
@@ -109,6 +116,7 @@ export {
 	INVALID_ELEMENT_ATTRIBUTE_NAME,
 	ASYNC_SCRIPT_ATTRIBUTE_NAME,
 	COMMENT_HEADER,
+	COMMENT_HEADER_LEGACY,
 	SINGLE_FILE_UI_ELEMENT_CLASS,
 	EMPTY_RESOURCE,
 	INFOBAR_TAGNAME,
@@ -204,7 +212,7 @@ function getElementsInfo(win, doc, element, options, data = { usedFonts: new Map
 		const elements = Array.from(element.childNodes).filter(node => (node instanceof win.HTMLElement) || (node instanceof win.SVGElement) || (node instanceof globalThis.HTMLElement) || (node instanceof globalThis.SVGElement));
 		elements.forEach(element => {
 			let elementHidden, elementKept, computedStyle;
-			if (options.removeHiddenElements || options.removeUnusedFonts || options.compressHTML) {
+			if (!options.autoSaveExternalSave && (options.removeHiddenElements || options.removeUnusedFonts || options.compressHTML)) {
 				computedStyle = getComputedStyle(win, element);
 				if ((element instanceof win.HTMLElement) || (element instanceof globalThis.HTMLElement)) {
 					if (options.removeHiddenElements) {
@@ -592,6 +600,33 @@ function removeQuotes(string) {
 
 function getFontWeight(weight) {
 	return FONT_WEIGHTS[weight.toLowerCase().trim()] || weight;
+}
+
+function getContentSize(content) {
+	return new Blob([content]).size;
+}
+
+async function digest(algo, text) {
+	try {
+		const hash = await crypto.subtle.digest(algo, new TextEncoder("utf-8").encode(text));
+		return hex(hash);
+	} catch (error) {
+		return "";
+	}
+}
+
+// https://developer.mozilla.org/en-US/docs/Web/API/SubtleCrypto/digest
+function hex(buffer) {
+	const hexCodes = [];
+	const view = new DataView(buffer);
+	for (let i = 0; i < view.byteLength; i += 4) {
+		const value = view.getUint32(i);
+		const stringValue = value.toString(16);
+		const padding = "00000000";
+		const paddedValue = (padding + stringValue).slice(-padding.length);
+		hexCodes.push(paddedValue);
+	}
+	return hexCodes.join("");
 }
 
 function flatten(array) {

@@ -24,6 +24,7 @@
 /* global Blob, FileReader, URL, URLSearchParams */
 
 import { parse } from "./template-parser.js";
+import { getContentSize, digest } from "./../core/helper.js";
 
 // eslint-disable-next-line quotes
 const DEFAULT_REPLACED_CHARACTERS = ["~", "+", "\\\\", "?", "%", "*", ":", "|", '"', "<", ">", "\x00-\x1f", "\x7F"];
@@ -16865,8 +16866,8 @@ enterprisecloud.nu
 
 export { formatFilename, evalTemplate };
 
-async function formatFilename(content, doc, options, util) {
-	let filename = (await evalTemplate(options.filenameTemplate, options, util, content, doc)) || "";
+async function formatFilename(content, doc, options) {
+	let filename = (await evalTemplate(options.filenameTemplate, options, content, doc)) || "";
 	filename = filename.trim();
 	if (options.replaceEmojisInFilename) {
 		EMOJIS.forEach(emoji => (filename = replaceAll(filename, emoji, " _" + EMOJI_NAMES[emoji] + "_ ")));
@@ -16876,7 +16877,7 @@ async function formatFilename(content, doc, options, util) {
 	if (!options.backgroundSave) {
 		filename = filename.replace(/\//g, replacementCharacter);
 	}
-	if (!options.keepFilename && ((options.filenameMaxLengthUnit == "bytes" && util.getContentSize(filename) > options.filenameMaxLength) || filename.length > options.filenameMaxLength)) {
+	if (!options.keepFilename && ((options.filenameMaxLengthUnit == "bytes" && getContentSize(filename) > options.filenameMaxLength) || filename.length > options.filenameMaxLength)) {
 		const extensionMatch = filename.match(/(\.[^.]{3,4})$/);
 		const extension = extensionMatch && extensionMatch[0] && extensionMatch[0].length > 1 ? extensionMatch[0] : "";
 		filename = options.filenameMaxLengthUnit == "bytes" ? await truncateText(filename, options.filenameMaxLength - extension.length) : filename.substring(0, options.filenameMaxLength - extension.length);
@@ -16891,7 +16892,7 @@ async function formatFilename(content, doc, options, util) {
 	return filename.trim();
 }
 
-async function evalTemplate(template = "", options, util, content, doc, dontReplaceSlash) {
+async function evalTemplate(template = "", options, content, doc, dontReplaceSlash) {
 	const url = new URL(options.saveUrl);
 	const urlHref = decode(url.href);
 	const params = Array.from(new URLSearchParams(url.search));
@@ -16923,7 +16924,7 @@ async function evalTemplate(template = "", options, util, content, doc, dontRepl
 		"url-hostname-root": { getter: () => urlRoot },
 		"url-hostname-subdomains": { getter: () => urlSubDomains },
 		"url-href": { getter: () => urlHref, dontReplaceSlash: dontReplaceSlashIfUndefined },
-		"url-href-digest-sha-1": { getter: urlHref ? async () => util.digest("SHA-1", urlHref) : "" },
+		"url-href-digest-sha-1": { getter: urlHref ? async () => digest("SHA-1", urlHref) : "" },
 		"url-href-flat": { getter: () => decode(url.href), dontReplaceSlash: false },
 		"url-referrer": { getter: () => decode(options.referrer), dontReplaceSlash: dontReplaceSlashIfUndefined },
 		"url-referrer-flat": { getter: () => decode(options.referrer), dontReplaceSlash: false },
@@ -16943,9 +16944,9 @@ async function evalTemplate(template = "", options, util, content, doc, dontRepl
 		"filename-extension": { getter: () => getFilenameExtension(options) }
 	};
 	if (content) {
-		variables["digest-sha-256"] = { getter: async () => util.digest("SHA-256", content) };
-		variables["digest-sha-384"] = { getter: async () => util.digest("SHA-384", content) };
-		variables["digest-sha-512"] = { getter: async () => util.digest("SHA-512", content) };
+		variables["digest-sha-256"] = { getter: async () => digest("SHA-256", content) };
+		variables["digest-sha-384"] = { getter: async () => digest("SHA-384", content) };
+		variables["digest-sha-512"] = { getter: async () => digest("SHA-512", content) };
 	}
 	if (options.saveDate) {
 		addDateVariables(options.saveDate);
@@ -16971,7 +16972,7 @@ async function evalTemplate(template = "", options, util, content, doc, dontRepl
 		"substring": (value, start, end) => value.substring(start, end),
 		"lowercase": value => value.toLowerCase(),
 		"uppercase": value => value.toUpperCase(),
-		"capitalize": value => value.replace(/(?:^|\s)\S/g, a => a.toUpperCase()),
+		"capitalize": value => value.charAt(0).toUpperCase() + value.slice(1),
 		"replace": (value, searchValue, replaceValue) => searchValue && replaceValue ? replaceAll(value, searchValue, replaceValue) : value,
 		"trim": value => value.trim(),
 		"trim-left": value => value.trimLeft(),
@@ -16982,8 +16983,8 @@ async function evalTemplate(template = "", options, util, content, doc, dontRepl
 		"index-of": (value, searchValue, fromIndex) => value.indexOf(searchValue, fromIndex),
 		"last-index-of": (value, searchValue, fromIndex) => value.lastIndexOf(searchValue, fromIndex),
 		"length": value => value.length,
-		"url-search-name": (index = 0) => (params[index] && params[index][0]),
-		"url-search-value": (index = 0) => (params[index] && params[index][1]),
+		"url-search-name": (index = 0) => params[index] && params[index][0],
+		"url-search-value": (index = 0) => params[index] && params[index][1],
 		"url-search": name => {
 			const param = params.find(param => param[0] == name);
 			return (param && param[1]);
