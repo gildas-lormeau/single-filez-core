@@ -167,7 +167,7 @@ const STAGES = [{
 }, {
 	sequential: [
 		{ action: "loadOptionsFromPage" },
-		{ option: "saveOptionsIntoPage", action: "saveOptionsIntoPage" },
+		{ option: "saveFilenameTemplateData", action: "saveFilenameTemplateData" },
 	]
 }];
 
@@ -633,7 +633,7 @@ class Processor {
 		}
 	}
 
-	saveOptionsIntoPage() {
+	saveFilenameTemplateData() {
 		const optionsElement = this.doc.createElement("script");
 		optionsElement.type = "application/json";
 		optionsElement.setAttribute(SCRIPT_OPTIONS, "");
