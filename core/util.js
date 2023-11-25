@@ -21,7 +21,7 @@
  *   Source.
  */
 
-/* global globalThis, URLSearchParams */
+/* global globalThis */
 
 import * as vendor from "./../vendor/index.js";
 import * as modules from "./../modules/index.js";
@@ -71,6 +71,7 @@ const URL = globalThis.URL;
 const DOMParser = globalThis.DOMParser;
 const fetch = (url, options) => globalThis.fetch(url, options);
 const TextDecoder = globalThis.TextDecoder;
+const URLSearchParams = globalThis.URLSearchParams;
 
 export {
 	getInstance
