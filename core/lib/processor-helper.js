@@ -91,7 +91,7 @@ function getProcessorHelperClass(utilInstance) {
 		}
 
 		replaceStylesheets(doc, stylesheets, options, resources) {
-			const entries = Array.from(stylesheets);
+			const entries = Array.from(stylesheets).reverse();
 			for (const [key, stylesheetInfo] of entries) {
 				if (key.urlNode) {
 					const name = "stylesheet_" + resources.stylesheets.size + ".css";
