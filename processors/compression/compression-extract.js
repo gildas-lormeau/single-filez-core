@@ -141,7 +141,6 @@ async function extract(content, { password, prompt = () => { }, shadowRootScript
 	indexPages.sort(sortByFilenameLengthDec);
 	textResources.sort(sortByFilenameLengthInc);
 	resources = resources.concat(...textResources).concat(...indexPages);
-	debugger;
 	for (const resource of resources) {
 		let { textContent, mimeType, filename } = resource;
 		if (textContent !== undefined) {
