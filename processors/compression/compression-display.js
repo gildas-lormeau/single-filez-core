@@ -28,8 +28,8 @@ export {
 };
 
 async function display(document, docContent, { disableFramePointerEvents } = {}) {
-	docContent = docContent.replace(/<noscript/gi, "<disabled-noscript");
-	docContent = docContent.replaceAll(/<\/noscript/gi, "</disabled-noscript");
+	docContent = docContent.replace(/<noscript/gi, "<template disabled-noscript");
+	docContent = docContent.replaceAll(/<\/noscript/gi, "</template");
 	const doc = (new DOMParser()).parseFromString(docContent, "text/html");
 	if (doc.doctype) {
 		if (document.doctype) {
@@ -48,8 +48,9 @@ async function display(document, docContent, { disableFramePointerEvents } = {})
 		});
 	}
 	document.replaceChild(document.importNode(doc.documentElement, true), document.documentElement);
-	document.querySelectorAll("disabled-noscript").forEach(element => {
+	document.querySelectorAll("template[disabled-noscript]").forEach(element => {
 		const noscriptElement = document.createElement("noscript");
+		element.removeAttribute("disabled-noscript");
 		Array.from(element.attributes).forEach(attribute => noscriptElement.setAttribute(attribute.name, attribute.value));
 		noscriptElement.textContent = element.innerHTML;
 		element.parentElement.replaceChild(noscriptElement, element);
