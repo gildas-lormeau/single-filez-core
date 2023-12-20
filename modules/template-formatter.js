@@ -16995,6 +16995,10 @@ async function evalTemplate(template = "", options, content, doc, dontReplaceSla
 			const param = params.find(param => param[0] == name);
 			return (param && param[1]);
 		},
+		"url-search-named-value": name => {
+			const param = params.find(param => param[0] == name);
+			return (param && param[1]);
+		},
 		"url-segment": (index = 0) => {
 			const segments = decode(url.pathname).split("/");
 			segments.pop();
