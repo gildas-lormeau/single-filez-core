@@ -17030,6 +17030,9 @@ async function evalTemplate(template = "", options, content, doc, dontReplaceSla
 			const fn = functions[name];
 			if (fn) {
 				argument = argument.replace(/\\\\(.)/g, "$1");
+				if (!optionalArguments) {
+					optionalArguments = [];
+				}
 				optionalArguments = optionalArguments
 					.map(argument => argument.replace(/\\\\(.)/g, "$1"))
 					.filter(argument => argument != undefined && argument != null && argument != "");
