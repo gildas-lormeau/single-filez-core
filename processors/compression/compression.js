@@ -21,7 +21,7 @@
  *   Source.
  */
 
-/* global globalThis, FileReader, Node */
+/* global globalThis, Node, FileReader */
 
 import {
 	configure,
