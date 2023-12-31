@@ -70,6 +70,7 @@ async function process(pageData, options, lastModDate = new Date()) {
 	}
 	const zipDataWriter = new Uint8ArrayWriter();
 	zipDataWriter.init();
+	zipDataWriter.writable.size = 0;
 	let extraDataOffset, extraData;
 	if (options.selfExtractingArchive) {
 		extraDataOffset = await prependHTMLData(pageData, zipDataWriter, script, options);
@@ -242,7 +243,7 @@ async function arrayToBase64(data) {
 async function writeData(writable, array) {
 	const streamWriter = writable.getWriter();
 	await streamWriter.ready;
-	writable.size = array.length;
+	writable.size += array.length;
 	await streamWriter.write(array);
 	streamWriter.releaseLock();
 }
