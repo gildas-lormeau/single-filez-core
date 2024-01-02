@@ -412,8 +412,10 @@ async function getContent() {
 		if (zipDataElement) {
 			let dataNode = zipDataElement.nextSibling;
 			if (dataNode) {
-				if (dataNode.nodeType == Node.TEXT_NODE) {
+				if (dataNode.nodeType == Node.TEXT_NODE && dataNode.nextSibling) {
 					dataNode = dataNode.nextSibling;
+				} else {
+					dataNode = zipDataElement.previousSibling;
 				}
 			} else {
 				dataNode = zipDataElement.previousSibling;
