@@ -66,22 +66,41 @@ async function display(document, docContent, { disableFramePointerEvents, insert
 	});
 	document.documentElement.setAttribute("data-sfz", "");
 	document.querySelectorAll("link[rel*=icon]").forEach(element => element.parentElement.replaceChild(element, element));
-
-	function getDoctypeString(doc) {
-		const docType = doc.doctype;
-		let docTypeString = "";
-		if (docType) {
-			docTypeString = "<!DOCTYPE " + docType.nodeName;
-			if (docType.publicId) {
-				docTypeString += " PUBLIC \"" + docType.publicId + "\"";
-				if (docType.systemId)
-					docTypeString += " \"" + docType.systemId + "\"";
-			} else if (docType.systemId)
-				docTypeString += " SYSTEM \"" + docType.systemId + "\"";
-			if (docType.internalSubset)
-				docTypeString += " [" + docType.internalSubset + "]";
-			docTypeString += "> ";
+	if (!insertEmbeddedImage) {
+		for (let element of Array.from(document.querySelectorAll("script"))) {
+			await new Promise(resolve => {
+				const scriptElement = document.createElement("script");
+				Array.from(element.attributes).forEach(attribute => scriptElement.setAttribute(attribute.name, attribute.value));
+				const async = element.getAttribute("async") == "" || element.getAttribute("async") == "async";
+				if (element.textContent) {
+					scriptElement.textContent = element.textContent;
+				} else if (!async) {
+					scriptElement.addEventListener("load", resolve);
+					scriptElement.addEventListener("error", () => resolve());
+				}
+				element.parentElement.replaceChild(scriptElement, element);
+				if (element.textContent || async) {
+					resolve();
+				}
+			});
 		}
-		return docTypeString;
 	}
+}
+
+function getDoctypeString(doc) {
+	const docType = doc.doctype;
+	let docTypeString = "";
+	if (docType) {
+		docTypeString = "<!DOCTYPE " + docType.nodeName;
+		if (docType.publicId) {
+			docTypeString += " PUBLIC \"" + docType.publicId + "\"";
+			if (docType.systemId)
+				docTypeString += " \"" + docType.systemId + "\"";
+		} else if (docType.systemId)
+			docTypeString += " SYSTEM \"" + docType.systemId + "\"";
+		if (docType.internalSubset)
+			docTypeString += " [" + docType.internalSubset + "]";
+		docTypeString += "> ";
+	}
+	return docTypeString;
 }
