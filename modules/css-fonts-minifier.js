@@ -348,6 +348,9 @@ function getUsedFontWeight(fontInfo, fontStyle, fontWeights) {
 					foundWeight = findDescendingFontWeight(fontWeight, fontWeights);
 				}
 			}
+			if (!foundWeight) {
+				foundWeight = fontWeights.find(weights => weights[0] <= fontWeight && weights[1] >= fontWeight);
+			}
 		} else {
 			foundWeight = fontWeights[0];
 		}
