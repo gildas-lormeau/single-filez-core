@@ -152,6 +152,9 @@ function getInstance(utilOptions) {
 		formatFilename(content, doc, options) {
 			return modules.templateFormatter.formatFilename(content, doc, options);
 		},
+		getMimeType(options) {
+			return !options.compressContent || options.selfExtractingArchive ? "text/html" : "application/zip";
+		},
 		evalTemplate(template, options, content, doc, dontReplaceSlash) {
 			return modules.templateFormatter.evalTemplate(template, options, content, doc, dontReplaceSlash);
 		},
